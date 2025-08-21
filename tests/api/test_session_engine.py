@@ -10,10 +10,8 @@ class TestSessionEngine:
     @pytest.fixture
     def client(self):
         """テスト用のFastAPIクライアント"""
-        # 実装後にインポート
-        # from api.main import app
-        # return TestClient(app)
-        pass
+        from api.main import app
+        return TestClient(app)
 
     def test_focus_start_success(self, client):
         """フォーカスセッション開始の正常ケース"""
@@ -21,19 +19,18 @@ class TestSessionEngine:
         payload = {"task_id": "write_report", "minutes": 25}
         
         # When: /focus/start にPOST
-        # response = client.post("/focus/start", json=payload)
+        response = client.post("/focus/start", json=payload)
         
         # Then: 成功レスポンスを返す
-        # assert response.status_code == 200
-        # assert response.json()["ok"] is True
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
         
         # And: セッション状態が更新される
-        # status_response = client.get("/status")
-        # status = status_response.json()
-        # assert status["current_task"]["id"] == "write_report"
-        # assert status["current_task"]["goal"] == 25 * 60  # 秒換算
-        # assert status["current_task"]["accum"] == 0
-        assert True  # 実装前のプレースホルダー
+        status_response = client.get("/status")
+        status = status_response.json()
+        assert status["current_task"]["id"] == "write_report"
+        assert status["current_task"]["goal"] == 25 * 60  # 秒換算
+        assert status["current_task"]["accum"] == 0
 
     def test_events_ingest_productive(self, client):
         """生産的イベントの取り込みテスト"""
@@ -49,12 +46,11 @@ class TestSessionEngine:
         }
         
         # When: /events にPOST
-        # response = client.post("/events", json=event)
+        response = client.post("/events", json=event)
         
         # Then: 生産的として判定される
-        # assert response.status_code == 200
-        # assert response.json()["productive"] is True
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        assert response.json()["productive"] is True
 
     def test_events_ingest_distracted(self, client):
         """脱線イベントの取り込みテスト"""
@@ -70,12 +66,11 @@ class TestSessionEngine:
         }
         
         # When: /events にPOST
-        # response = client.post("/events", json=event)
+        response = client.post("/events", json=event)
         
         # Then: 非生産的として判定される
-        # assert response.status_code == 200
-        # assert response.json()["productive"] is False
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        assert response.json()["productive"] is False
 
     def test_idle_detection(self, client):
         """アイドル状態の検出テスト"""
@@ -91,12 +86,11 @@ class TestSessionEngine:
         }
         
         # When: /events にPOST
-        # response = client.post("/events", json=event)
+        response = client.post("/events", json=event)
         
         # Then: アイドル状態として非生産的判定
-        # assert response.status_code == 200
-        # assert response.json()["productive"] is False
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        assert response.json()["productive"] is False
 
     def test_phone_distraction_detection(self, client):
         """スマホによる脱線検出テスト"""
@@ -112,25 +106,23 @@ class TestSessionEngine:
         }
         
         # When: /events にPOST
-        # response = client.post("/events", json=event)
+        response = client.post("/events", json=event)
         
         # Then: スマホ脱線として非生産的判定
-        # assert response.status_code == 200
-        # assert response.json()["productive"] is False
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        assert response.json()["productive"] is False
 
     def test_status_endpoint(self, client):
         """ステータス取得テスト"""
         # When: /status にGET
-        # response = client.get("/status")
+        response = client.get("/status")
         
         # Then: 現在の状態を返す
-        # assert response.status_code == 200
-        # status = response.json()
-        # assert "current_task" in status
-        # assert "productive" in status
-        # assert "config" in status
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        status = response.json()
+        assert "current_task" in status
+        assert "productive" in status
+        assert "config" in status
 
     @pytest.mark.asyncio
     async def test_ticker_accumulation(self):
@@ -191,24 +183,20 @@ class TestSessionEngine:
         
         for payload in invalid_payloads:
             # When: 不正なデータでPOST
-            # response = client.post("/focus/start", json=payload)
+            response = client.post("/focus/start", json=payload)
             
             # Then: バリデーションエラーを返す
-            # assert response.status_code == 422
-            pass
-        
-        assert True  # 実装前のプレースホルダー
+            assert response.status_code == 422
 
     def test_concurrent_session_handling(self, client):
         """同時セッション処理テスト"""
         # Given: 既存のセッションがある状態
-        # client.post("/focus/start", json={"task_id": "task1", "minutes": 25})
+        client.post("/focus/start", json={"task_id": "task1", "minutes": 25})
         
         # When: 新しいセッションを開始
-        # response = client.post("/focus/start", json={"task_id": "task2", "minutes": 30})
+        response = client.post("/focus/start", json={"task_id": "task2", "minutes": 30})
         
         # Then: 新しいセッションで上書きされる
-        # assert response.status_code == 200
-        # status = client.get("/status").json()
-        # assert status["current_task"]["id"] == "task2"
-        assert True  # 実装前のプレースホルダー
+        assert response.status_code == 200
+        status = client.get("/status").json()
+        assert status["current_task"]["id"] == "task2"
