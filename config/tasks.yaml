@@ -1,0 +1,19 @@
+- id: write_report
+  title: 週報ドラフト
+  minutes: 25
+  allow_apps: [WINWORD.EXE, Code.exe, chrome.exe]
+  block_words: [YouTube, Prime Video, Steam]
+- id: pr_review
+  title: PRレビュー
+  minutes: 30
+  allow_apps: [Code.exe, chrome.exe]
+- id: coding_session
+  title: コーディング作業
+  minutes: 45
+  allow_apps: [Code.exe, python.exe, pycharm64.exe]
+  block_words: [YouTube, TikTok, Twitter, Instagram]
+- id: documentation
+  title: ドキュメント作成
+  minutes: 20
+  allow_apps: [WINWORD.EXE, chrome.exe, notepad.exe]
+  block_words: [YouTube, Prime Video, Steam, TikTok]
