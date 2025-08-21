@@ -2,16 +2,16 @@
 
 **完全ローカル動作の生産性監視システム with OpenAI gpt-oss-20b**
 
-PC画面・Webカメラ・スマホ画面の状況から「脱線していないか」を判定し、脱線時は即リマインド。指定時間の作業継続でタスク自動完了。
+PC 画面・Web カメラ・スマホ画面の状況から「脱線していないか」を判定し、脱線時は即リマインド。指定時間の作業継続でタスク自動完了。
 
 ## 特徴
 
-- ✅ **完全ローカル動作**: インターネット接続不要（LLM推論も含む）
-- ✅ **OSS LLM使用**: OpenAI gpt-oss-20b (20B parameters)
-- ✅ **マルチプラットフォーム**: Windows・Linux・macOS対応
-- ✅ **リアルタイム監視**: 2秒間隔での生産性判定
-- ✅ **インテリジェントnudging**: LLMベースの適切な注意喚起
-- ✅ **プライバシー重視**: 画像・画面データは保存しない
+-   ✅ **完全ローカル動作**: インターネット接続不要（LLM 推論も含む）
+-   ✅ **OSS LLM 使用**: OpenAI gpt-oss-20b (20B parameters)
+-   ✅ **マルチプラットフォーム**: Windows・Linux・macOS 対応
+-   ✅ **リアルタイム監視**: 2 秒間隔での生産性判定
+-   ✅ **インテリジェント nudging**: LLM ベースの適切な注意喚起
+-   ✅ **プライバシー重視**: 画像・画面データは保存しない
 
 ## アーキテクチャ
 
@@ -49,25 +49,29 @@ PC画面・Webカメラ・スマホ画面の状況から「脱線していない
 ## 必要な環境
 
 ### 最小要件
-- **OS**: Windows 10/11, Ubuntu 20.04+, macOS 11+
-- **Python**: 3.11+
-- **RAM**: 8GB以上
-- **ストレージ**: 2GB以上
 
-### LLM推論用（推奨）
-- **GPU**: VRAM 16GB以上（RTX 4090, A4000等）
-- **RAM**: 16GB以上
-- **Note**: GPU無しでもCPU推論可能（大幅に低速）
+-   **OS**: Windows 10/11, Ubuntu 20.04+, macOS 11+
+-   **Python**: 3.11+
+-   **RAM**: 8GB 以上
+-   **ストレージ**: 2GB 以上
+
+### LLM 推論用（推奨）
+
+-   **GPU**: VRAM 16GB 以上（RTX 4090, A4000 等）
+-   **RAM**: 16GB 以上
+-   **Note**: GPU 無しでも CPU 推論可能（大幅に低速）
 
 ## インストール・セットアップ
 
 ### 1. プロジェクトクローン
+
 ```bash
 git clone <repository-url>
 cd back2task
 ```
 
-### 2. Python環境セットアップ
+### 2. Python 環境セットアップ
+
 ```bash
 # Windows
 python -m venv venv
@@ -82,7 +86,8 @@ pip install -r requirements.txt
 
 ### 3. LLM サーバーセットアップ
 
-#### 3.1 WSL2 (Windows) または Linux環境で vLLM インストール
+#### 3.1 WSL2 (Windows) または Linux 環境で vLLM インストール
+
 ```bash
 # WSL2 Ubuntu または Linux
 python3 -m venv ~/venv/vllm
@@ -90,7 +95,8 @@ source ~/venv/vllm/bin/activate
 pip install vllm>=0.5.0
 ```
 
-#### 3.2 OpenAI gpt-oss-20b をvLLMで起動
+#### 3.2 OpenAI gpt-oss-20b を vLLM で起動
+
 ```bash
 # GPU使用（推奨）
 python -m vllm.entrypoints.openai.api_server \
@@ -108,86 +114,75 @@ python -m vllm.entrypoints.openai.api_server \
   --enforce-eager
 ```
 
-### 4. 追加依存関係（オプション）
+#### 追加 Python ライブラリ（高度な機能用）
 
-#### OCR機能（推奨）
-```bash
-# Ubuntu/Debian
-sudo apt-get install tesseract-ocr
-
-# Windows
-# https://github.com/tesseract-ocr/tesseract からインストーラーをダウンロード
-
-# macOS
-brew install tesseract
-```
-
-#### 追加Pythonライブラリ（高度な機能用）
 ```bash
 pip install opencv-python ultralytics mediapipe mss pytesseract
 ```
 
 ## 使用方法
 
-### 1. APIサーバー起動
+### 🚀 ワンコマンド起動（推奨）
+
 ```bash
+cd back2task
+./start.sh          # Back2Task全体を起動
+./stop.sh           # 停止
+./quick-start.sh    # 起動 + デモタスク自動開始
+```
+
+### 📊 基本操作
+
+```bash
+# 集中するタスクを設定
+curl -X POST http://localhost:5577/focus/update \
+  -H "Content-Type: application/json" \
+  -d '{"target":"新しい機能のコーディング"}'
+
+# ステータス確認
+curl http://localhost:5577/status | python3 -m json.tool
+
+```
+
+# ログ確認
+
+tail -f /tmp/back2task/\*.log
+
+````
+
+### 🔧 手動起動（開発用）
+```bash
+# 1. APIサーバー起動
 cd back2task
 source venv/bin/activate  # Windows: venv\Scripts\activate
 uvicorn api.main:app --reload --port 5577
-```
 
-### 2. Event Pump（監視プロセス）起動
-```bash
-# 別ターミナルで
+# 2. Event Pump（監視プロセス）起動（別ターミナル）
 cd back2task
 source venv/bin/activate
 python watchers/pump.py --enable-phone  # スマホ検出有効
-```
-
-### 3. フォーカスセッション開始
-```bash
-# タスク開始（25分セッション）
-curl -X POST http://localhost:5577/focus/start \
-  -H "Content-Type: application/json" \
-  -d '{"task_id":"coding_session","minutes":25}'
-
-# ステータス確認
-curl http://localhost:5577/status
-```
-
-### 4. タスク設定
-`config/tasks.yaml` を編集してタスクを定義：
-
-```yaml
-- id: coding_session
-  title: プログラミング作業
-  minutes: 45
-  allow_apps: [Code.exe, python.exe, chrome.exe]
-  block_words: [YouTube, TikTok, Twitter, Instagram]
-
-- id: document_writing
-  title: ドキュメント作成
-  minutes: 30
-  allow_apps: [WINWORD.EXE, chrome.exe, notepad.exe]
-  block_words: [YouTube, Prime Video, Steam]
-```
+````
 
 ## API エンドポイント
 
 ### セッション管理
-- `POST /focus/start` - フォーカスセッション開始
-- `GET /status` - 現在のセッション状態取得
+
+-   `POST /focus/start` - フォーカスセッション開始
+-   `GET /status` - 現在のセッション状態取得
 
 ### イベント取り込み
-- `POST /events` - 監視データの取り込み
+
+-   `POST /events` - 監視データの取り込み
 
 ### LLM サービス
-- `GET /llm/models` - 利用可能モデル一覧
-- `POST /llm/nudge` - nudging policy 生成
+
+-   `GET /llm/models` - 利用可能モデル一覧
+-   `POST /llm/nudge` - nudging policy 生成
 
 ## 設定
 
 ### 通知設定
+
 ```python
 from ui.notifications import NotificationConfig
 
@@ -199,7 +194,8 @@ config = NotificationConfig(
 )
 ```
 
-### LLM設定
+### LLM 設定
+
 ```python
 from api.services.llm import LLMService
 
@@ -213,12 +209,14 @@ llm = LLMService(
 ## テスト
 
 ### 全テスト実行
+
 ```bash
 source venv/bin/activate
 python -m pytest tests/ -v
 ```
 
 ### 個別コンポーネントテスト
+
 ```bash
 # FastAPI Session Engine
 python -m pytest tests/api/test_session_engine.py -v
@@ -226,48 +224,52 @@ python -m pytest tests/api/test_session_engine.py -v
 # LLM Service
 python -m pytest tests/api/test_llm_service.py -v
 
-# Watchers
-python test_watchers_direct.py
+# 通知システム
+python -m pytest tests/ui/test_notifications.py -v
 
-# Notifications
-python test_notifications_direct.py
+# Watchers
+python -m pytest tests/watchers/ -v
 ```
 
-### 統合動作確認
+### 統合テスト
+
 ```bash
 # Event Pump テスト
 python watchers/pump.py --test-once
 
-# API + LLM テスト
+# システム全体テスト
 python test_integration.py
 ```
 
 ## 監視される内容
 
 ### 生産的な活動
-- IDE・エディタ（VSCode, PyCharm, Vim等）
-- ターミナル・コマンドライン
-- 技術ドキュメント・Stack Overflow
-- GitHub・コードレビュー
-- 仕事関連のWebサイト
 
-### 非生産的な活動
-- 動画サイト（YouTube, Netflix, TikTok等）
-- SNS（Twitter, Instagram, Facebook等）
-- ゲーム（Steam, Epic Games等）
-- ニュースサイト（業務と無関係）
-- スマートフォン使用
+-   IDE・エディタ（VSCode, PyCharm, Vim 等）
+-   ターミナル・コマンドライン
+-   技術ドキュメント・Stack Overflow
+-   GitHub・コードレビュー
+-   仕事関連の Web サイト
+
+### 非生産的な活動（LLM が画面から自動判定）
+
+-   動画サイト（YouTube, Netflix, TikTok 等）
+-   SNS（Twitter, Instagram, Facebook 等）
+-   ゲーム（Steam, Epic Games 等）
+-   ニュースサイト（業務と無関係）
+-   スマートフォンアプリの利用
 
 ## プライバシー・セキュリティ
 
-- 🔒 **完全ローカル**: データは外部に送信されません
-- 🔒 **画像非保存**: スクリーンショット・カメラ画像は保存されません
-- 🔒 **最小データ**: 必要最小限の情報のみ処理
-- 🔒 **暗号化**: 設定ファイルは暗号化可能（オプション）
+-   🔒 **完全ローカル**: データは外部に送信されません
+-   🔒 **画像非保存**: スクリーンショット・カメラ画像は保存されません
+-   🔒 **最小データ**: 必要最小限の情報のみ処理
+-   🔒 **暗号化**: 設定ファイルは暗号化可能（オプション）
 
 ## トラブルシューティング
 
 ### LLM サーバー接続エラー
+
 ```bash
 # サーバー状態確認
 curl http://localhost:8000/v1/models
@@ -276,16 +278,15 @@ curl http://localhost:8000/v1/models
 tail -f ~/.cache/vllm/logs/*.log
 ```
 
-### カメラ・OCR エラー
-```bash
-# 権限確認
-ls -la /dev/video*
+### スクリーンキャプチャエラー
 
-# Tesseract確認
-tesseract --version
+```bash
+# Windows での権限確認
+# PowerShell で管理者権限が必要な場合があります
 ```
 
 ### 通知が表示されない
+
 ```bash
 # Linux: 通知デーモン確認
 systemctl --user status notification-daemon
@@ -296,7 +297,8 @@ Get-ExecutionPolicy
 
 ## 拡張・カスタマイズ
 
-### 新しいWatcher追加
+### 新しい Watcher 追加
+
 ```python
 # watchers/custom_watcher.py
 def get_custom_data():
@@ -305,7 +307,8 @@ def get_custom_data():
 # watchers/pump.py に統合
 ```
 
-### カスタムLLMプロンプト
+### カスタム LLM プロンプト
+
 ```python
 # api/services/llm.py
 custom_prompt = """
@@ -314,6 +317,7 @@ custom_prompt = """
 ```
 
 ### 通知スタイル変更
+
 ```python
 # ui/notifications.py
 def custom_notification_style():

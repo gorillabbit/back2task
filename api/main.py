@@ -1,52 +1,44 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, field_validator
-import asyncio
-import time
-from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any
+from dataclasses import asdict
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # アプリケーション起動時にティッカーを開始
-    ticker_task = asyncio.create_task(ticker())
-    yield
-    # シャットダウン時にティッカーを停止
-    ticker_task.cancel()
+# LLMサービスをインポート
+from api.services.llm import LLMService, NudgingPolicy, create_llm_service
 
+# FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(
-    title="Back2Task API", 
-    description="Local task focus monitoring API",
-    lifespan=lifespan
+    title="Back2Task AI Assistant",
+    description="AI-powered productivity monitoring API",
 )
 
-STATE = {
-    "current_task": None,
-    "productive": False,
-    "done": None,
-    "config": {"tick_sec": 2, "slip_tolerance": 5},
+# グローバルな状態管理
+STATE: Dict[str, Any] = {
+    "focus_target": "一般的な作業",  # ユーザーが集中したいタスク
+    "productive": True,  # 現在、生産的かどうか
+    "last_nudge": None,  # 最後のNudge情報
+    "llm_service": None,  # LLMサービスインスタンス
 }
 
+# --- Pydanticモデル定義 ---
 
-class FocusStart(BaseModel):
-    task_id: str
-    minutes: int
 
-    @field_validator('task_id')
+class FocusUpdate(BaseModel):
+    """フォーカスターゲット更新リクエストのモデル"""
+
+    target: str
+
+    @field_validator("target")
     @classmethod
-    def task_id_must_not_be_empty(cls, v):
+    def target_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError('task_id must not be empty')
-        return v
-
-    @field_validator('minutes')
-    @classmethod
-    def minutes_must_be_positive(cls, v):
-        if v <= 0:
-            raise ValueError('minutes must be positive')
+            raise ValueError("target must not be empty")
         return v
 
 
 class Event(BaseModel):
+    """監視イベントのデータモデル"""
+
     active_app: Optional[str] = None
     title: Optional[str] = ""
     url: Optional[str] = ""
@@ -54,93 +46,80 @@ class Event(BaseModel):
     ocr: Optional[str] = ""
     phone: Optional[str] = ""
     phone_detected: Optional[bool] = False
+    screenshot: Optional[str] = None  # base64エンコードされたスクリーンショット
 
 
-@app.post("/focus/start")
-async def start_focus(req: FocusStart):
-    """フォーカスセッションを開始する"""
-    STATE["current_task"] = {
-        "id": req.task_id,
-        "goal": req.minutes * 60,  # 分を秒に変換
-        "accum": 0,
-        "last_obs": {},
-        "started_at": time.time(),
-    }
-    STATE["done"] = None
-    return {"ok": True}
+# --- アプリケーションのライフサイクルイベント ---
+
+
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時にLLMサービスを初期化"""
+    STATE["llm_service"] = create_llm_service()
+    is_ready = STATE["llm_service"].is_available()
+    print(f"LLM Service Available: {is_ready}")
+
+
+# --- APIエンドポイント定義 ---
+
+
+@app.post("/focus/update")
+async def update_focus_target(req: FocusUpdate):
+    """ユーザーのフォーカスターゲット（集中したい作業内容）を更新する"""
+    STATE["focus_target"] = req.target
+    return {"ok": True, "focus_target": req.target}
 
 
 @app.post("/events")
-async def ingest(event: Event):
-    """イベントを取り込み、生産性を判定する"""
-    
-    # 基本的なルールベース判定
-    productive = _evaluate_productivity(event)
-    
-    STATE["productive"] = productive
-    
-    # 現在のタスクがある場合は観測データを保存
-    task = STATE.get("current_task")
-    if task:
-        task["last_obs"] = event.model_dump()
-    
-    return {"ok": True, "productive": productive}
+async def ingest_event(event: Event):
+    """監視イベントを取り込み、AIで生産性を判定する"""
+    llm_service: LLMService = STATE["llm_service"]
+    if not llm_service:
+        raise HTTPException(status_code=503, detail="LLM Service not available")
+
+    # AIによる生産性評価
+    is_productive, policy = _evaluate_productivity_by_ai(
+        event, llm_service, STATE["focus_target"]
+    )
+
+    # 状態を更新
+    STATE["productive"] = is_productive
+    STATE["last_nudge"] = asdict(policy) if policy else None
+
+    return {"ok": True, "productive": is_productive, "policy": STATE["last_nudge"]}
 
 
 @app.get("/status")
-async def status():
-    """現在のセッション状態を取得する"""
-    return STATE
+async def get_current_status():
+    """現在のシステム状態を取得する"""
+    # llm_serviceはJSONシリアライズできないので除外
+    status_info = {k: v for k, v in STATE.items() if k != "llm_service"}
+    return status_info
 
 
-def _evaluate_productivity(event: Event) -> bool:
-    """イベントから生産性を判定する"""
-    
-    # アイドル時間チェック（5秒以上で非生産的）
-    if event.idle_ms and event.idle_ms > 5000:
-        return False
-    
-    # スマホ検出チェック
-    if event.phone_detected or (event.phone and event.phone.strip()):
-        return False
-    
-    # ブラックリストアプリ・キーワードチェック
-    blacklist_keywords = [
-        "youtube", "tiktok", "prime video", "steam", 
-        "twitter", "instagram", "facebook", "reddit",
-        "おすすめ動画", "trending"
-    ]
-    
-    content_to_check = " ".join([
-        event.title or "",
-        event.url or "",
-        event.ocr or ""
-    ]).lower()
-    
-    for keyword in blacklist_keywords:
-        if keyword in content_to_check:
-            return False
-    
-    # その他は生産的とみなす
-    return True
+# --- 内部ロジック ---
 
 
-async def ticker():
-    """定期的にセッション状態を更新する"""
-    while True:
-        await asyncio.sleep(STATE["config"]["tick_sec"])
-        
-        task = STATE.get("current_task")
-        if not task:
-            continue
-            
-        # 生産的な時間のみ積算
-        if STATE["productive"]:
-            task["accum"] += STATE["config"]["tick_sec"]
-        
-        # 目標時間達成で自動完了
-        if task["accum"] >= task["goal"]:
-            STATE["done"] = task["id"]
-            STATE["current_task"] = None
+def _evaluate_productivity_by_ai(
+    event: Event, llm: LLMService, task: str
+) -> tuple[bool, Optional[NudgingPolicy]]:
+    """
+    LLMを使用してイベントから生産性を判定する。
 
+    Args:
+        event: 監視イベントデータ
+        llm: LLMサービスインスタンス
+        task: 現在のフォーカスターゲット
 
+    Returns:
+        (bool, NudgingPolicy): (生産的かどうか, LLMの判断ポリシー)
+    """
+    observations = event.model_dump()
+
+    # LLMに判断を依頼
+    policy = llm.decide_nudging_policy(task=task, observations=observations)
+
+    # "quiet"アクションは生産的とみなす
+    is_productive = policy.action == "quiet"
+
+    return is_productive, policy

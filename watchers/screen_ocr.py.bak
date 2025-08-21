@@ -1,12 +1,13 @@
 import platform
 import time
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Any
 import tempfile
 import os
 
 # プラットフォーム固有のインポート
 try:
     import mss
+
     MSS_AVAILABLE = True
 except ImportError:
     MSS_AVAILABLE = False
@@ -15,6 +16,7 @@ try:
     import pytesseract
     import cv2
     import numpy as np
+
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
@@ -28,9 +30,9 @@ if platform.system() == "Windows":
     possible_paths = [
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        r"C:\Users\Public\Tesseract-OCR\tesseract.exe"
+        r"C:\Users\Public\Tesseract-OCR\tesseract.exe",
     ]
-    
+
     for path in possible_paths:
         if os.path.exists(path):
             pytesseract.pytesseract.tesseract_cmd = path
@@ -39,7 +41,7 @@ if platform.system() == "Windows":
 
 class ScreenClassifier:
     """スクリーンの内容をOCRで分析するクラス"""
-    
+
     def __init__(self, bbox: Optional[Dict[str, int]] = None):
         """
         Args:
@@ -49,179 +51,177 @@ class ScreenClassifier:
         self.bbox = bbox or {"top": 0, "left": 0, "width": 1920, "height": 1080}
         self.last_capture_time = 0
         self.last_text = ""
-        
+
     def is_available(self) -> bool:
         """OCR機能が利用可能かチェック"""
         return MSS_AVAILABLE and OCR_AVAILABLE
-    
+
     def capture_screen(self) -> Optional[Any]:
         """
         指定領域のスクリーンキャプチャを取得
-        
+
         Returns:
             numpy.ndarray: キャプチャされた画像、失敗時はNone
         """
         if not MSS_AVAILABLE:
             return None
-            
+
         try:
             with mss.mss() as sct:
                 # スクリーンキャプチャを実行
                 screenshot = sct.grab(self.bbox)
-                
+
                 # numpy配列に変換
                 img_array = np.array(screenshot)
-                
+
                 # BGR形式に変換（OpenCV用）
                 if img_array.shape[2] == 4:  # BGRA
                     img_array = cv2.cvtColor(img_array, cv2.COLOR_BGRA2BGR)
                 elif img_array.shape[2] == 3:  # RGB
                     img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-                
+
                 return img_array
-                
+
         except Exception as e:
             print(f"スクリーンキャプチャエラー: {e}")
             return None
-    
+
     def preprocess_image(self, image: Any) -> Any:
         """
         OCR精度向上のための画像前処理
-        
+
         Args:
             image: 入力画像
-            
+
         Returns:
             numpy.ndarray: 前処理済み画像
         """
         try:
             # グレースケール変換
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
+
             # ノイズ除去
             denoised = cv2.medianBlur(gray, 3)
-            
+
             # コントラスト調整
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             enhanced = clahe.apply(denoised)
-            
+
             # 二値化（適応的閾値）
             binary = cv2.adaptiveThreshold(
-                enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 11, 2
+                enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
             )
-            
+
             return binary
-            
+
         except Exception:
             # 前処理に失敗した場合は元の画像をグレースケール化して返す
             return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    def extract_text(self, image: Any, lang: str = 'eng+jpn') -> str:
+
+    def extract_text(self, image: Any, lang: str = "eng+jpn") -> str:
         """
         画像からテキストを抽出
-        
+
         Args:
             image: 入力画像
             lang: OCR言語設定
-            
+
         Returns:
             str: 抽出されたテキスト
         """
         if not OCR_AVAILABLE:
             return ""
-            
+
         try:
             # 画像前処理
             processed_image = self.preprocess_image(image)
-            
+
             # OCR設定
-            config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽゃゅょっアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポャュョッ .,!?()-'
-            
+            config = "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽゃゅょっアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポャュョッ .,!?()-"
+
             # テキスト抽出
             text = pytesseract.image_to_string(
-                processed_image, 
-                lang=lang, 
-                config=config
+                processed_image, lang=lang, config=config
             )
-            
+
             # テキスト整理
             cleaned_text = self._clean_text(text)
-            
+
             return cleaned_text
-            
+
         except Exception as e:
             print(f"OCRエラー: {e}")
             return ""
-    
+
     def _clean_text(self, text: str) -> str:
         """
         抽出されたテキストをクリーニング
-        
+
         Args:
             text: 抽出されたテキスト
-            
+
         Returns:
             str: クリーニング済みテキスト
         """
         # 改行を空白に置換
-        text = text.replace('\n', ' ').replace('\r', '')
-        
+        text = text.replace("\n", " ").replace("\r", "")
+
         # 連続した空白を一つに
         import re
-        text = re.sub(r'\s+', ' ', text)
-        
+
+        text = re.sub(r"\s+", " ", text)
+
         # 先頭・末尾の空白を除去
         text = text.strip()
-        
+
         # 長すぎるテキストは切り詰め
         if len(text) > 500:
             text = text[:500] + "..."
-        
+
         return text
-    
+
     def read_snippet(self, max_length: int = 200) -> str:
         """
         スクリーンの一部をOCRで読み取り
-        
+
         Args:
             max_length: 返すテキストの最大長
-            
+
         Returns:
             str: 読み取られたテキスト
         """
         if not self.is_available():
             return ""
-        
+
         try:
             # スクリーンキャプチャ
             image = self.capture_screen()
             if image is None:
                 return ""
-            
+
             # テキスト抽出
             text = self.extract_text(image)
-            
+
             # 長さ制限
             if len(text) > max_length:
                 text = text[:max_length]
-            
+
             self.last_capture_time = time.time()
             self.last_text = text
-            
+
             return text
-            
+
         except Exception as e:
             print(f"スクリーン読み取りエラー: {e}")
             return ""
-    
+
     def analyze_content(self, text: str) -> Dict[str, any]:
         """
         テキスト内容を分析して生産性を判定
-        
+
         Args:
             text: 分析対象のテキスト
-            
+
         Returns:
             Dict: 分析結果
         """
@@ -230,37 +230,67 @@ class ScreenClassifier:
             "productive": True,
             "confidence": 0.5,
             "detected_keywords": [],
-            "category": "unknown"
+            "category": "unknown",
         }
-        
+
         if not text:
             return analysis
-        
+
         text_lower = text.lower()
-        
+
         # 非生産的キーワード
         unproductive_keywords = [
-            'youtube', 'twitter', 'facebook', 'instagram', 'tiktok',
-            'reddit', 'netflix', 'prime video', 'hulu', 'disney',
-            'game', 'steam', 'epic games', 'twitch',
-            'おすすめ動画', '再生', 'いいね', 'チャンネル登録',
-            'trending', 'viral', 'meme'
+            "youtube",
+            "twitter",
+            "facebook",
+            "instagram",
+            "tiktok",
+            "reddit",
+            "netflix",
+            "prime video",
+            "hulu",
+            "disney",
+            "game",
+            "steam",
+            "epic games",
+            "twitch",
+            "おすすめ動画",
+            "再生",
+            "いいね",
+            "チャンネル登録",
+            "trending",
+            "viral",
+            "meme",
         ]
-        
+
         # 生産的キーワード
         productive_keywords = [
-            'code', 'python', 'javascript', 'github', 'stackoverflow',
-            'documentation', 'tutorial', 'programming', 'development',
-            'プログラミング', 'コード', 'ドキュメント', 'エラー',
-            'function', 'class', 'variable', 'import', 'export'
+            "code",
+            "python",
+            "javascript",
+            "github",
+            "stackoverflow",
+            "documentation",
+            "tutorial",
+            "programming",
+            "development",
+            "プログラミング",
+            "コード",
+            "ドキュメント",
+            "エラー",
+            "function",
+            "class",
+            "variable",
+            "import",
+            "export",
         ]
-        
+
         # キーワード検出
         detected_unproductive = [kw for kw in unproductive_keywords if kw in text_lower]
         detected_productive = [kw for kw in productive_keywords if kw in text_lower]
-        
+
         analysis["detected_keywords"] = detected_unproductive + detected_productive
-        
+
         # 判定ロジック
         if detected_unproductive:
             analysis["productive"] = False
@@ -275,32 +305,32 @@ class ScreenClassifier:
             analysis["productive"] = True
             analysis["confidence"] = 0.3
             analysis["category"] = "neutral"
-        
+
         return analysis
-    
+
     def save_debug_image(self, image: Any, filename: str = None) -> str:
         """
         デバッグ用に画像を保存
-        
+
         Args:
             image: 保存する画像
             filename: ファイル名（Noneの場合は自動生成）
-            
+
         Returns:
             str: 保存されたファイルパス
         """
         if filename is None:
             timestamp = int(time.time())
             filename = f"screen_capture_{timestamp}.png"
-        
+
         try:
             # 一時ディレクトリに保存
             temp_dir = tempfile.gettempdir()
             filepath = os.path.join(temp_dir, filename)
-            
+
             cv2.imwrite(filepath, image)
             return filepath
-            
+
         except Exception as e:
             print(f"画像保存エラー: {e}")
             return ""
@@ -310,17 +340,17 @@ class ScreenClassifier:
 def read_snippet(bbox: Optional[Dict[str, int]] = None) -> str:
     """
     スクリーンの一部を読み取る便利関数
-    
+
     Args:
         bbox: キャプチャ領域
-        
+
     Returns:
         str: 読み取られたテキスト
     """
     if not (MSS_AVAILABLE and OCR_AVAILABLE):
         print("スクリーンキャプチャまたはOCRライブラリが利用できません")
         return ""
-        
+
     classifier = ScreenClassifier(bbox)
     return classifier.read_snippet()
 
@@ -330,24 +360,26 @@ if __name__ == "__main__":
     print("Screen Classifierを開始...")
     print(f"MSS利用可能: {MSS_AVAILABLE}")
     print(f"OCR利用可能: {OCR_AVAILABLE}")
-    
+
     if MSS_AVAILABLE and OCR_AVAILABLE:
         # 小さな領域でテスト（画面左上の800x300領域）
         bbox = {"top": 100, "left": 100, "width": 800, "height": 300}
         classifier = ScreenClassifier(bbox)
-        
+
         for i in range(3):
-            print(f"\n#{i+1} スクリーン読み取り中...")
+            print(f"\n#{i + 1} スクリーン読み取り中...")
             text = classifier.read_snippet()
             print(f"読み取りテキスト: {text[:100]}{'...' if len(text) > 100 else ''}")
-            
+
             if text:
                 analysis = classifier.analyze_content(text)
-                print(f"生産性判定: {analysis['productive']} (信頼度: {analysis['confidence']})")
+                print(
+                    f"生産性判定: {analysis['productive']} (信頼度: {analysis['confidence']})"
+                )
                 print(f"カテゴリ: {analysis['category']}")
-                if analysis['detected_keywords']:
+                if analysis["detected_keywords"]:
                     print(f"検出キーワード: {analysis['detected_keywords']}")
-            
+
             time.sleep(3)
     else:
         print("必要なライブラリがインストールされていません")
