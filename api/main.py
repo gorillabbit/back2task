@@ -148,7 +148,7 @@ async def get_monitoring_page():
             h1, h2 { color: #555; }
             .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
             .grid-item { background: #f9f9f9; padding: 15px; border-radius: 5px; }
-            #screenshot { max-width: 100%; height: auto; border: 1px solid #ddd; }
+            #screenshot { max-width: 100%; max-height: 400px; height: auto; border: 1px solid #ddd; object-fit: contain; }
             pre { background: #eee; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
             #logs { height: 300px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; }
         </style>

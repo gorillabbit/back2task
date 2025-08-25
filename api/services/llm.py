@@ -1,6 +1,7 @@
 import requests
 import json
 import time
+import os
 from typing import Dict, Optional, Any
 from dataclasses import dataclass
 
@@ -34,6 +35,8 @@ class LLMService:
         self.model_name = model_name
         self.timeout = timeout
         self.chat_url = f"{self.base_url}/v1/chat/completions"
+        # Optional API key for OpenAI-compatible servers (e.g., LM Studio)
+        self.api_key = os.getenv("LLM_API_KEY") or None
 
         # システムプロンプト
         self.system_prompt = """
@@ -59,7 +62,15 @@ Focus on being helpful, not annoying.
     def is_available(self) -> bool:
         """LLMサービスが利用可能かチェック"""
         try:
-            response = requests.get(f"{self.base_url}/v1/models", timeout=5)
+            # Authorization ヘッダは必要な場合のみ付与
+            if self.api_key:
+                response = requests.get(
+                    f"{self.base_url}/v1/models",
+                    timeout=5,
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                )
+            else:
+                response = requests.get(f"{self.base_url}/v1/models", timeout=5)
             return response.status_code == 200
         except Exception:
             return False
@@ -117,8 +128,13 @@ Decide the best nudging action now.
             NudgingPolicy: 決定されたnudging policy
         """
         if not self.is_available():
-            # LLMが利用できない場合はルールベースフォールバック
-            return self._fallback_policy(observations)
+            # ルールベース判定は行わず、LLM不可時は静的に"quiet"を返す
+            return NudgingPolicy(
+                action="quiet",
+                reason="LLM unavailable",
+                tip=None,
+                confidence=0.0,
+            )
 
         try:
             # レート制限適用
@@ -162,16 +178,22 @@ Decide the best nudging action now.
                 "stop": ["\n\n", "```"],
             }
 
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
             response = requests.post(
                 self.chat_url,
                 json=payload,
                 timeout=self.timeout,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
 
             if response.status_code != 200:
                 print(f"LLM API エラー: HTTP {response.status_code}")
-                return self._fallback_policy(observations)
+                return NudgingPolicy(
+                    action="quiet", reason="LLM error", tip=None, confidence=0.0
+                )
 
             response_data = response.json()
             content = response_data["choices"][0]["message"]["content"].strip()
@@ -187,110 +209,25 @@ Decide the best nudging action now.
                 )
             except json.JSONDecodeError:
                 print(f"LLM JSON パースエラー: {content}")
-                return self._fallback_policy(observations)
+                return NudgingPolicy(
+                    action="quiet", reason="LLM parse error", tip=None, confidence=0.0
+                )
 
         except requests.exceptions.Timeout:
             print("LLM API タイムアウト")
-            return self._fallback_policy(observations)
+            return NudgingPolicy(
+                action="quiet", reason="LLM timeout", tip=None, confidence=0.0
+            )
         except Exception as e:
             print(f"LLM API 予期しないエラー: {e}")
-            return self._fallback_policy(observations)
+            return NudgingPolicy(
+                action="quiet", reason="LLM exception", tip=None, confidence=0.0
+            )
 
     def _fallback_policy(self, observations: Dict[str, Any]) -> NudgingPolicy:
-        """
-        LLM が利用できない場合のルールベースフォールバック
-
-        Args:
-            observations: 観測データ
-
-        Returns:
-            NudgingPolicy: ルールベースで決定されたpolicy
-        """
-        active_app = observations.get("active_app", "")
-        title = observations.get("title", "")
-        url = observations.get("url", "")
-        idle_ms = observations.get("idle_ms", 0)
-        screenshot = observations.get("screenshot", "")
-
-        # 強い脱線パターン
-        strong_distractions = [
-            "youtube",
-            "tiktok",
-            "twitter",
-            "instagram",
-            "facebook",
-            "netflix",
-            "prime video",
-            "steam",
-            "game",
-        ]
-
-        # 軽い脱線パターン
-        gentle_distractions = ["reddit", "news", "shopping", "amazon", "ebay"]
-
-        # 生産的パターン
-        productive_patterns = [
-            "code",
-            "vscode",
-            "vim",
-            "emacs",
-            "ide",
-            "terminal",
-            "documentation",
-            "github",
-            "stackoverflow",
-            "programming",
-        ]
-
-        # 検出ロジック
-        content_to_check = f"{active_app} {title} {url}"
-
-        # 長時間アイドル -> 軽い脱線
-        if idle_ms > 300000:  # 5分以上
-            return NudgingPolicy(
-                action="gentle_nudge",
-                reason="Long idle time",
-                tip="Ready to continue working?",
-                confidence=0.7,
-            )
-
-        # スクリーンショットがある場合のルールベース判定はスキップ
-        # （LLMによる判定が利用できない場合のみここに到達）
-        if screenshot:
-            return NudgingPolicy(
-                action="quiet",
-                reason="Screenshot analysis unavailable",
-                tip=None,
-                confidence=0.2,
-            )
-
-        # 強い脱線キーワード検出
-        if any(keyword in content_to_check for keyword in strong_distractions):
-            return NudgingPolicy(
-                action="strong_nudge",
-                reason="Distraction detected",
-                tip="Get back to your task!",
-                confidence=0.8,
-            )
-
-        # 軽い脱線キーワード検出
-        if any(keyword in content_to_check for keyword in gentle_distractions):
-            return NudgingPolicy(
-                action="gentle_nudge",
-                reason="Minor distraction",
-                tip="Consider returning to work",
-                confidence=0.6,
-            )
-
-        # 生産的パターン検出
-        if any(keyword in content_to_check for keyword in productive_patterns):
-            return NudgingPolicy(
-                action="quiet", reason="Productive activity", tip=None, confidence=0.7
-            )
-
-        # デフォルト: 不明だが問題なし
+        """互換維持用: ルールベースは廃止。静的 quiet を返す。"""
         return NudgingPolicy(
-            action="quiet", reason="Unknown activity", tip=None, confidence=0.3
+            action="quiet", reason="LLM unavailable", tip=None, confidence=0.0
         )
 
     def generate_task_suggestions(self, task_description: str) -> Dict[str, Any]:
@@ -383,9 +320,20 @@ Keep responses concise and practical.
 
 
 # 便利関数
-def create_llm_service(base_url: str = "http://localhost:8000") -> LLMService:
-    """LLMサービスのファクトリ関数"""
-    return LLMService(base_url=base_url)
+def create_llm_service(
+    base_url: Optional[str] = None, model_name: Optional[str] = None
+) -> LLMService:
+    """LLMサービスのファクトリ関数
+
+    環境変数で設定可能:
+    - LLM_URL: OpenAI互換APIのベースURL（例: http://localhost:1234）
+    - LLM_MODEL: 使用するモデル名（例: google/gemma-3-4b）
+    - LLM_API_KEY: 必要に応じてBearerトークン
+    """
+    # デフォルトは LM Studio の Local Server + Gemma 3 4B
+    resolved_base = os.getenv("LLM_URL") or base_url or "http://localhost:1234"
+    resolved_model = os.getenv("LLM_MODEL") or model_name or "google/gemma-3-4b"
+    return LLMService(base_url=resolved_base, model_name=resolved_model)
 
 
 def decide_nudging_policy(

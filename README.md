@@ -1,13 +1,13 @@
 # Back2Task
 
-**完全ローカル動作の生産性監視システム with OpenAI gpt-oss-20b**
+**完全ローカル動作の生産性監視システム（LM Studio + Gemma 3 4B 対応）**
 
 PC 画面・Web カメラ・スマホ画面の状況から「脱線していないか」を判定し、脱線時は即リマインド。指定時間の作業継続でタスク自動完了。
 
 ## 特徴
 
 -   ✅ **完全ローカル動作**: インターネット接続不要（LLM 推論も含む）
--   ✅ **OSS LLM 使用**: OpenAI gpt-oss-20b (20B parameters)
+-   ✅ **ローカル LLM 使用**: LM Studio 経由（例: google/gemma-3-4b, 画像理解）
 -   ✅ **マルチプラットフォーム**: Windows・Linux・macOS 対応
 -   ✅ **リアルタイム監視**: 2 秒間隔での生産性判定
 -   ✅ **インテリジェント nudging**: LLM ベースの適切な注意喚起
@@ -38,8 +38,8 @@ PC 画面・Web カメラ・スマホ画面の状況から「脱線していな�
                               │ OpenAI互換API
                               ▼
 ┌─────────────────── LLM Service ───────────────────────────┐
-│  vLLM API Server (localhost:8000)                         │
-│  └── gpt-oss-20b (OpenAI 20B parameters model)           │
+│  LM Studio Local Server (localhost:1234)                  │
+│  └── google/gemma-3-4b (Vision)                           │
 │      ├── Nudging Policy Generation                        │
 │      ├── Task Breakdown Suggestions                       │
 │      └── Contextual Productivity Analysis                 │
@@ -84,41 +84,32 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. LLM サーバーセットアップ
+### 3.x LM Studio を使う（Gemma 3 4B, 画像入力対応）
 
-#### 3.1 WSL2 (Windows) または Linux 環境で vLLM インストール
+LM Studio の Local Server は OpenAI 互換 API を提供します。本プロジェクトはそのまま接続できます。
 
-```bash
-# WSL2 Ubuntu または Linux
-python3 -m venv ~/venv/vllm
-source ~/venv/vllm/bin/activate
-pip install vllm>=0.5.0
-```
-
-#### 3.2 OpenAI gpt-oss-20b を vLLM で起動
+-   LM Studio でモデルをロード（例: `google/gemma-3-4b`）。Local Server を起動（デフォルト: `http://localhost:1234/v1`）。
+-   Back2Task 側は環境変数で接続先とモデル名を指定します。
 
 ```bash
-# GPU使用（推奨）
-python -m vllm.entrypoints.openai.api_server \
-  --model openai/gpt-oss-20b \
-  --served-model-name gpt-oss-20b \
-  --max-model-len 32768 \
-  --port 8000
+# Windows (PowerShell)
+$env:LLM_URL = "http://localhost:1234"   # 末尾 /v1 は不要
+$env:LLM_MODEL = "google/gemma-3-4b"
+# 認証が必要なら（LM Studio 設定に合わせる）
+$env:LLM_API_KEY = "lm-studio"
+./start.bat
 
-# CPU使用（低速）
-python -m vllm.entrypoints.openai.api_server \
-  --model openai/gpt-oss-20b \
-  --served-model-name gpt-oss-20b \
-  --max-model-len 16384 \
-  --port 8000 \
-  --enforce-eager
+# macOS/Linux (bash/zsh)
+export LLM_URL="http://localhost:1234"
+export LLM_MODEL="google/gemma-3-4b"
+export LLM_API_KEY="lm-studio"   # 任意
+./start.sh
 ```
 
-#### 追加 Python ライブラリ（高度な機能用）
+補足:
 
-```bash
-pip install opencv-python ultralytics mediapipe mss pytesseract
-```
+-   ストリーミングは未使用、画像リサイズは行いません。Event Pump が取得したスクリーンショットを base64 の data URL として直接送信します。
+-   ルールベースの判定は廃止しました。LLM が利用できない・エラー時は `action: "quiet"`（reason にエラー種別）を返すだけで、挙動は最小限に抑えます。
 
 ## 使用方法
 
@@ -200,8 +191,8 @@ config = NotificationConfig(
 from api.services.llm import LLMService
 
 llm = LLMService(
-    base_url="http://localhost:8000",
-    model_name="gpt-oss-20b",
+    base_url=os.getenv("LLM_URL", "http://localhost:1234"),
+    model_name=os.getenv("LLM_MODEL", "google/gemma-3-4b"),
     timeout=20.0
 )
 ```
@@ -294,45 +285,3 @@ systemctl --user status notification-daemon
 # Windows: PowerShell権限確認
 Get-ExecutionPolicy
 ```
-
-## 拡張・カスタマイズ
-
-### 新しい Watcher 追加
-
-```python
-# watchers/custom_watcher.py
-def get_custom_data():
-    return {"custom_metric": "value"}
-
-# watchers/pump.py に統合
-```
-
-### カスタム LLM プロンプト
-
-```python
-# api/services/llm.py
-custom_prompt = """
-カスタム指示をここに記述
-"""
-```
-
-### 通知スタイル変更
-
-```python
-# ui/notifications.py
-def custom_notification_style():
-    # カスタム通知ロジック
-    pass
-```
-
-## ライセンス
-
-MIT License
-
-## 貢献
-
-Pull requests、Issues、機能提案を歓迎します。
-
----
-
-**Back2Task** - Stay focused, stay productive! 🎯

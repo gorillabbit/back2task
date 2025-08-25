@@ -30,8 +30,20 @@ class ScreenCapture:
             bbox: キャプチャ領域 {"top": int, "left": int, "width": int, "height": int}
                  Noneの場合は画面全体
         """
-        self.bbox = bbox or {"top": 0, "left": 0, "width": 1920, "height": 1080}
+        self.bbox = bbox or self._get_primary_monitor_bbox()
         self.last_capture_time = 0
+
+    def _get_primary_monitor_bbox(self) -> Dict[str, int]:
+        """プライマリモニターの実際の解像度を取得"""
+        if not MSS_AVAILABLE:
+            return {"top": 0, "left": 0, "width": 1920, "height": 1080}
+        
+        try:
+            with mss.mss() as sct:
+                monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+                return monitor
+        except Exception:
+            return {"top": 0, "left": 0, "width": 1920, "height": 1080}
 
     def is_available(self) -> bool:
         """スクリーンキャプチャ機能が利用可能かチェック"""

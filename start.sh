@@ -111,12 +111,13 @@ fi
 
 # 3. LLMサーバーチェック（オプション）
 echo -e "${BLUE}🤖 LLMサーバーチェック中...${NC}"
-if curl -s http://localhost:8000/v1/models > /dev/null 2>&1; then
+LLM_URL_CHECK=${LLM_URL:-http://localhost:1234}
+if curl -s "${LLM_URL_CHECK}/v1/models" > /dev/null 2>&1; then
     echo -e "${GREEN}   ✅ LLMサーバー利用可能${NC}"
-    LLM_STATUS="利用可能"
+    LLM_STATUS="利用可能 (${LLM_URL_CHECK})"
 else
-    echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません（ルールベース判定で動作）${NC}"
-    LLM_STATUS="なし"
+    echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません（AI 無効）${NC}"
+    LLM_STATUS="なし（AI 無効）"
 fi
 
 # 起動完了
