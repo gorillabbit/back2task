@@ -50,6 +50,22 @@ if [[ -f "/tmp/back2task/pump.pid" ]]; then
     rm -f /tmp/back2task/pump.pid
 fi
 
+if [[ -f "/tmp/back2task/llm.pid" ]]; then
+    LLM_PID=$(cat /tmp/back2task/llm.pid)
+    if ps -p "$LLM_PID" > /dev/null 2>&1; then
+        echo -e "${YELLOW}🧠 LLMサーバーを停止中 (PID: $LLM_PID)...${NC}"
+        kill "$LLM_PID" 2>/dev/null || true
+        sleep 2
+        if ps -p "$LLM_PID" > /dev/null 2>&1; then
+            echo "   強制終了中..."
+            kill -9 "$LLM_PID" 2>/dev/null || true
+        fi
+        echo -e "${GREEN}   ✅ LLMサーバー停止完了${NC}"
+        ((stopped_count++))
+    fi
+    rm -f /tmp/back2task/llm.pid
+fi
+
 # ポート5577を使用中のプロセスを停止
 if lsof -ti:5577 > /dev/null 2>&1; then
     echo -e "${YELLOW}🔌 ポート5577のプロセスを停止中...${NC}"
