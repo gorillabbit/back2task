@@ -34,6 +34,7 @@ test = [
 ]
 
 [tool.pytest.ini_options]
+# Limit test discovery to the dedicated tests directory.
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
@@ -48,3 +49,9 @@ target-version = ['py311']
 [tool.isort]
 profile = "black"
 line_length = 88
+[tool.knot]
+environment.python-version = "3.11"
+terminal.output-format = "full"
+terminal.error-on-warning = true
+rules.call-non-callable = "error"
+rules.call-possibly-unbound-method = "warn"
