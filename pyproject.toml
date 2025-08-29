@@ -36,6 +36,9 @@ test = [
 [tool.pytest.ini_options]
 # Limit test discovery to the dedicated tests directory.
 testpaths = ["tests"]
+# Look for tests in the repository root.  The previous configuration pointed to
+# a non-existent ``tests`` directory which prevented ``pytest`` from adding the
+# project to ``sys.path`` during test collection, leading to import errors.
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
