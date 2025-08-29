@@ -48,3 +48,9 @@ target-version = ['py311']
 [tool.isort]
 profile = "black"
 line_length = 88
+[tool.knot]
+environment.python-version = "3.11"
+terminal.output-format = "full"
+terminal.error-on-warning = true
+rules.call-non-callable = "error"
+rules.call-possibly-unbound-method = "warn"

@@ -50,16 +50,14 @@ class NotificationService:
 
 
 # 便利関数とグローバルインスタンス
-_default_service = None
+_default_service: Optional[NotificationService] = None
 
 
-def get_notification_service(
-    config: Optional[NotificationConfig] = None,
-) -> NotificationService:
+def get_notification_service() -> NotificationService:
     """デフォルトの通知サービスを取得"""
     global _default_service
     if _default_service is None:
-        _default_service = NotificationService(config)
+        _default_service = NotificationService()
     return _default_service
 
 

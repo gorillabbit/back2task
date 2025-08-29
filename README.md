@@ -228,6 +228,24 @@ python watchers/pump.py --test-once
 python test_integration.py
 ```
 
+## 静的解析
+
+Rust 製の `red_knot` を利用してコードの静的解析を行います。バイナリ配布がないため、ソースからビルドしてください。
+
+```bash
+git clone https://github.com/astral-sh/ruff.git
+cd ruff
+cargo install --path crates/red_knot
+cd ..
+# 必要に応じて cargo の bin ディレクトリを PATH に追加
+export PATH="$HOME/.cargo/bin:$PATH"
+red_knot check
+# 特定のファイルを解析
+red_knot check foo.py
+```
+
+設定は `pyproject.toml` の `[tool.knot]` セクションでカスタマイズできます。
+
 ## 監視される内容
 
 ### 生産的な活動
@@ -280,3 +298,4 @@ systemctl --user status notification-daemon
 # Windows: PowerShell権限確認
 Get-ExecutionPolicy
 ```
+
