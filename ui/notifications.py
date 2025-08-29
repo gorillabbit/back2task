@@ -1,7 +1,32 @@
+"""Simple notification helpers used by tests.
+
+The original project targets a Windows environment and relied on a thin
+wrapper around the Win32 ``MessageBox`` API.  For the purposes of the unit
+tests in this kata we only need a very small subset of that functionality:
+
+* the ability to instantiate a ``NotificationService`` with an optional
+  configuration object,
+* recording of sent notifications so tests can introspect the history, and
+* a light‑weight capability inquiry method.
+
+The previous implementation attempted to expose a configuration type and a
+history mechanism but the pieces were never implemented which resulted in a
+``NameError`` during import.  The convenience helper functions also attempted
+to forward keyword arguments that ``NotificationService.notify`` did not
+accept.  Importing :mod:`ui.notifications` therefore failed before any tests
+could run.
+
+To make the module usable in both Windows and non‑Windows environments we
+provide minimal cross‑platform fallbacks and keep a record of all notification
+requests.
+"""
+
 import platform
 import ctypes
+import time
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 
 class NotificationLevel(Enum):
@@ -10,53 +35,110 @@ class NotificationLevel(Enum):
     URGENT = "urgent"
 
 
-class NotificationService:
-    """最小限のWindows用通知サービス（MessageBoxベース）"""
+@dataclass
+class NotificationConfig:
+    """Configuration for :class:`NotificationService`.
 
-    def __init__(self):
+    Only a couple of toggles are necessary for the tests.  They default to
+    ``False`` so that calling code can simply ignore them.
+    """
+
+    sound: bool = False
+    flash: bool = False
+
+
+class NotificationService:
+    """Minimal notification service with history tracking."""
+
+    def __init__(self, config: Optional[NotificationConfig] = None):
         self.platform = platform.system()
+        self.config = config or NotificationConfig()
+        self._history: List[dict] = []
 
     def notify(
         self,
         title: str,
         message: str,
         level: NotificationLevel = NotificationLevel.INFO,
+        *,
+        sound: Optional[bool] = None,
+        flash: Optional[bool] = None,
     ) -> bool:
-        """Windowsで簡易通知を表示（OKボタン付きのメッセージボックス）。
+        """Display a notification and record it.
 
-        非Windows環境では何もせず False を返す。
+        On Windows we attempt to show a standard ``MessageBox``.  On other
+        platforms the function simply records the notification and reports
+        failure (``False``).  ``sound`` and ``flash`` can override the default
+        configuration values but are otherwise ignored on non‑Windows systems.
         """
-        if self.platform != "Windows":
-            return False
 
-        try:
-            MB_OK = 0x00000000
-            MB_ICON_INFO = 0x00000040
-            MB_ICON_WARN = 0x00000030
-            MB_ICON_STOP = 0x00000010
-            MB_TOPMOST = 0x00040000
+        sound = self.config.sound if sound is None else sound
+        flash = self.config.flash if flash is None else flash
 
-            icon = {
-                NotificationLevel.INFO: MB_ICON_INFO,
-                NotificationLevel.WARNING: MB_ICON_WARN,
-                NotificationLevel.URGENT: MB_ICON_STOP,
-            }[level]
+        success = False
+        if self.platform == "Windows":
+            try:
+                MB_OK = 0x00000000
+                MB_ICON_INFO = 0x00000040
+                MB_ICON_WARN = 0x00000030
+                MB_ICON_STOP = 0x00000010
+                MB_TOPMOST = 0x00040000
 
-            flags = MB_OK | icon | MB_TOPMOST
-            ctypes.windll.user32.MessageBoxW(0, message, title, flags)
-            return True
-        except Exception:
-            return False
+                icon = {
+                    NotificationLevel.INFO: MB_ICON_INFO,
+                    NotificationLevel.WARNING: MB_ICON_WARN,
+                    NotificationLevel.URGENT: MB_ICON_STOP,
+                }[level]
+
+                flags = MB_OK | icon | MB_TOPMOST
+                ctypes.windll.user32.MessageBoxW(0, message, title, flags)
+                success = True
+            except Exception:
+                success = False
+
+        self._history.append(
+            {
+                "title": title,
+                "message": message,
+                "level": level.value,
+                "sound": sound,
+                "flash": flash,
+                "timestamp": time.time(),
+                "delivered": success,
+            }
+        )
+        return success
+
+    # ------------------------------------------------------------------
+    # Query helpers
+    def get_capabilities(self) -> dict:
+        """Return a very small capability description.
+
+        The implementation is intentionally simple – the tests merely expect
+        the method to exist and to return a dictionary.
+        """
+
+        return {
+            "platform": self.platform,
+            "supports_sound": self.platform == "Windows",
+            "supports_flash": self.platform == "Windows",
+        }
+
+    def get_notification_history(self) -> List[dict]:
+        """Return a copy of the notification history."""
+
+        return list(self._history)
 
 
 # 便利関数とグローバルインスタンス
-_default_service = None
+_default_service: Optional[NotificationService] = None
 
 
 def get_notification_service(
     config: Optional[NotificationConfig] = None,
 ) -> NotificationService:
-    """デフォルトの通知サービスを取得"""
+    """Return a lazily-instantiated default :class:`NotificationService`."""
+
     global _default_service
     if _default_service is None:
         _default_service = NotificationService(config)
@@ -69,7 +151,8 @@ def notify(
     level: NotificationLevel = NotificationLevel.INFO,
     **kwargs,
 ) -> bool:
-    """便利関数：通知送信"""
+    """Convenience wrapper around :meth:`NotificationService.notify`."""
+
     service = get_notification_service()
     return service.notify(title, message, level, **kwargs)
 
