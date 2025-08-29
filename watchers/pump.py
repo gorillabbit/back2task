@@ -1,6 +1,6 @@
 import time
 import requests
-from typing import Dict, Optional, Callable
+from typing import Any, Dict, Optional, Callable
 from concurrent.futures import ThreadPoolExecutor
 
 # 各Watcherをインポート
@@ -40,7 +40,7 @@ class EventPump:
         self.max_errors = 5
 
         # 統計情報
-        self.stats = {
+        self.stats: dict[str, Any] = {
             "events_sent": 0,
             "errors_total": 0,
             "start_time": None,
@@ -69,7 +69,7 @@ class EventPump:
             print(f"スクリーンキャプチャ初期化エラー: {e}")
             return False
 
-    def collect_window_data(self) -> Dict[str, any]:
+    def collect_window_data(self) -> Dict[str, str | None]:
         """前面ウィンドウ情報を収集"""
         try:
             window_info = get_active_app()
@@ -115,8 +115,7 @@ class EventPump:
             print(f"スクリーンショット収集エラー: {e}")
             return self.last_screenshot
 
-
-    def collect_all_data(self) -> Dict[str, any]:
+    def collect_all_data(self) -> Dict[str, Any]:
         """全てのWatcherからデータを収集"""
         # 並行してデータ収集
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -131,7 +130,7 @@ class EventPump:
             screenshot_data = screenshot_future.result(timeout=5)
 
         # データを統合
-        event_data = {
+        return {
             "timestamp": time.time(),
             "active_app": window_data.get("active_app") if window_data else None,
             "title": window_data.get("title", "") if window_data else "",
@@ -140,9 +139,7 @@ class EventPump:
             "screenshot": screenshot_data if screenshot_data else "",
         }
 
-        return event_data
-
-    def send_event(self, event_data: Dict[str, any]) -> bool:
+    def send_event(self, event_data: Dict[str, Any]) -> bool:
         """
         イベントデータをAPIに送信
 
@@ -281,7 +278,7 @@ class EventPump:
                     f"送信レート: {self.stats['events_sent'] / runtime * 60:.1f} イベント/分"
                 )
 
-    def get_status(self) -> Dict[str, any]:
+    def get_status(self) -> Dict[str, Any]:
         """現在の状態を取得"""
         return {
             "running": self.running,
@@ -305,7 +302,9 @@ def main():
         "--interval", type=float, default=2.0, help="データ収集間隔（秒）"
     )
     parser.add_argument(
-        "--disable-screenshot", action="store_true", help="スクリーンショット取得を無効化"
+        "--disable-screenshot",
+        action="store_true",
+        help="スクリーンショット取得を無効化",
     )
     parser.add_argument("--test-once", action="store_true", help="1回だけテスト実行")
 

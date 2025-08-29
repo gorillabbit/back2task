@@ -17,18 +17,18 @@ class NudgingPolicy:
 
 
 class LLMService:
-    """OpenAI gpt-oss-20b を使用したLLMサービス"""
+    """OpenAI互換APIクライアント（既定: LM Studio + Gemma 3 4B）"""
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
-        model_name: str = "gpt-oss-20b",
+        base_url: str = "http://localhost:1234",
+        model_name: str = "google/gemma-3-4b",
         timeout: float = 20.0,
     ):
         """
         Args:
-            base_url: vLLM APIサーバーのベースURL
-            model_name: 使用するモデル名
+            base_url: OpenAI互換APIのベースURL（LM Studio の場合は http://localhost:1234）
+            model_name: 使用するモデル名（既定: google/gemma-3-4b）
             timeout: APIタイムアウト（秒）
         """
         self.base_url = base_url.rstrip("/")
@@ -128,7 +128,7 @@ Decide the best nudging action now.
             NudgingPolicy: 決定されたnudging policy
         """
         if not self.is_available():
-            # ルールベース判定は行わず、LLM不可時は静的に"quiet"を返す
+            # LLM不可時は静的にquietを返す
             return NudgingPolicy(
                 action="quiet",
                 reason="LLM unavailable",
@@ -224,100 +224,6 @@ Decide the best nudging action now.
                 action="quiet", reason="LLM exception", tip=None, confidence=0.0
             )
 
-    def _fallback_policy(self, observations: Dict[str, Any]) -> NudgingPolicy:
-        """互換維持用: ルールベースは廃止。静的 quiet を返す。"""
-        return NudgingPolicy(
-            action="quiet", reason="LLM unavailable", tip=None, confidence=0.0
-        )
-
-    def generate_task_suggestions(self, task_description: str) -> Dict[str, Any]:
-        """
-        タスク開始時の具体的な下位タスクや励ましメッセージを生成
-
-        Args:
-            task_description: タスクの説明
-
-        Returns:
-            Dict: 提案とメッセージ
-        """
-        if not self.is_available():
-            return self._fallback_task_suggestions(task_description)
-
-        try:
-            self._rate_limit()
-
-            system_prompt = """
-You are a productivity assistant. Help break down tasks into actionable steps and provide encouragement.
-
-Return a JSON object with:
-- subtasks: array of 3-5 specific actionable steps
-- encouragement: brief motivating message
-- estimated_minutes: realistic time estimate per subtask
-
-Keep responses concise and practical.
-""".strip()
-
-            user_prompt = f"Help me plan this task: {task_description}"
-
-            payload = {
-                "model": self.model_name,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "temperature": 0.3,
-                "max_tokens": 300,
-            }
-
-            response = requests.post(self.chat_url, json=payload, timeout=self.timeout)
-
-            if response.status_code == 200:
-                content = response.json()["choices"][0]["message"]["content"].strip()
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    pass
-
-        except Exception as e:
-            print(f"タスク提案生成エラー: {e}")
-
-        return self._fallback_task_suggestions(task_description)
-
-    def _fallback_task_suggestions(self, task_description: str) -> Dict[str, Any]:
-        """タスク提案のフォールバック"""
-        return {
-            "subtasks": [
-                "Start with planning and research",
-                "Break down into smaller components",
-                "Implement core functionality",
-                "Test and validate results",
-                "Review and finalize",
-            ],
-            "encouragement": "You can do this! Take it step by step.",
-            "estimated_minutes": 10,
-        }
-
-    def get_model_info(self) -> Dict[str, Any]:
-        """モデル情報を取得"""
-        try:
-            response = requests.get(f"{self.base_url}/v1/models", timeout=5)
-            if response.status_code == 200:
-                return response.json()
-        except Exception:
-            pass
-
-        return {
-            "object": "list",
-            "data": [
-                {
-                    "id": self.model_name,
-                    "object": "model",
-                    "created": int(time.time()),
-                    "owned_by": "local",
-                }
-            ],
-        }
-
 
 # 便利関数
 def create_llm_service(
@@ -336,11 +242,4 @@ def create_llm_service(
     return LLMService(base_url=resolved_base, model_name=resolved_model)
 
 
-def decide_nudging_policy(
-    task: str, observations: Dict[str, Any], llm_service: Optional[LLMService] = None
-) -> NudgingPolicy:
-    """便利関数：nudging policy決定"""
-    if llm_service is None:
-        llm_service = create_llm_service()
-
-    return llm_service.decide_nudging_policy(task, observations)
+"""LLM service module (slimmed for LM Studio)."""

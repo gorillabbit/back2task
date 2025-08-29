@@ -151,7 +151,7 @@ uvicorn api.main:app --reload --port 5577
 # 2. Event Pump（監視プロセス）起動（別ターミナル）
 cd back2task
 source venv/bin/activate
-python watchers/pump.py --enable-phone  # スマホ検出有効
+python watchers/pump.py
 ````
 
 ## API エンドポイント
@@ -165,25 +165,21 @@ python watchers/pump.py --enable-phone  # スマホ検出有効
 
 -   `POST /events` - 監視データの取り込み
 
-### LLM サービス
+### LLM サービス（内部利用）
 
--   `GET /llm/models` - 利用可能モデル一覧
--   `POST /llm/nudge` - nudging policy 生成
+- 内部で LM Studio の OpenAI 互換エンドポイント（`/v1/chat/completions`）に接続します。
 
 ## 設定
 
-### 通知設定
+### 通知（Windows最小）
 
 ```python
-from ui.notifications import NotificationConfig
+from ui.notifications import NotificationService, NotificationLevel
 
-config = NotificationConfig(
-    enable_toast=True,      # デスクトップ通知
-    enable_sound=True,      # 音通知
-    enable_flash=False,     # 画面フラッシュ
-    toast_duration=5        # 通知表示時間（秒）
-)
+notifier = NotificationService()
+notifier.notify("Back2Task", "作業を続けましょう", level=NotificationLevel.INFO)
 ```
+備考: Windows のみで動作（メッセージボックス表示）。他OSでは無効です。
 
 ### LLM 設定
 
@@ -259,14 +255,13 @@ python test_integration.py
 
 ## トラブルシューティング
 
-### LLM サーバー接続エラー
+### LLM サーバー接続エラー（LM Studio）
 
 ```bash
-# サーバー状態確認
-curl http://localhost:8000/v1/models
+# サーバー状態確認（LM Studio Local Server）
+curl http://localhost:1234/v1/models
 
-# ログ確認
-tail -f ~/.cache/vllm/logs/*.log
+# ログ確認: LM Studio アプリの Local Server コンソールを参照
 ```
 
 ### スクリーンキャプチャエラー

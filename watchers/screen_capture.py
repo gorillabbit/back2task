@@ -4,21 +4,8 @@ import tempfile
 import os
 import base64
 from io import BytesIO
-
-# プラットフォーム固有のインポート
-try:
-    import mss
-
-    MSS_AVAILABLE = True
-except ImportError:
-    MSS_AVAILABLE = False
-
-try:
-    from PIL import Image
-
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
+from PIL import Image
+import mss
 
 
 class ScreenCapture:
@@ -35,19 +22,12 @@ class ScreenCapture:
 
     def _get_primary_monitor_bbox(self) -> Dict[str, int]:
         """プライマリモニターの実際の解像度を取得"""
-        if not MSS_AVAILABLE:
-            return {"top": 0, "left": 0, "width": 1920, "height": 1080}
-        
         try:
             with mss.mss() as sct:
                 monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
                 return monitor
         except Exception:
             return {"top": 0, "left": 0, "width": 1920, "height": 1080}
-
-    def is_available(self) -> bool:
-        """スクリーンキャプチャ機能が利用可能かチェック"""
-        return MSS_AVAILABLE and PIL_AVAILABLE
 
     def capture_screen(self) -> Optional[Image.Image]:
         """
@@ -56,9 +36,6 @@ class ScreenCapture:
         Returns:
             PIL.Image: キャプチャされた画像、失敗時はNone
         """
-        if not MSS_AVAILABLE:
-            return None
-
         try:
             with mss.mss() as sct:
                 # スクリーンキャプチャを実行
@@ -112,7 +89,7 @@ class ScreenCapture:
             print(f"base64変換エラー: {e}")
             return None
 
-    def save_screenshot(self, filename: str = None, format: str = "PNG") -> str:
+    def save_screenshot(self) -> str:
         """
         スクリーンショットを保存
 
@@ -123,10 +100,8 @@ class ScreenCapture:
         Returns:
             str: 保存されたファイルパス
         """
-        if filename is None:
-            timestamp = int(time.time())
-            ext = "png" if format.upper() == "PNG" else "jpg"
-            filename = f"screenshot_{timestamp}.{ext}"
+        timestamp = int(time.time())
+        filename = f"screenshot_{timestamp}.png"
 
         try:
             image = self.capture_screen()
@@ -137,7 +112,7 @@ class ScreenCapture:
             temp_dir = tempfile.gettempdir()
             filepath = os.path.join(temp_dir, filename)
 
-            image.save(filepath, format=format.upper())
+            image.save(filepath, format="PNG")
             return filepath
 
         except Exception as e:
@@ -151,9 +126,6 @@ class ScreenCapture:
         Returns:
             Dict: スクリーン情報
         """
-        if not MSS_AVAILABLE:
-            return {"available": False}
-
         try:
             with mss.mss() as sct:
                 monitors = sct.monitors
@@ -171,75 +143,27 @@ class ScreenCapture:
             return {"available": False, "error": str(e)}
 
 
-# 便利関数
-def capture_screenshot_base64(
-    bbox: Optional[Dict[str, int]] = None, format: str = "PNG"
-) -> Optional[str]:
-    """
-    スクリーンショットをbase64で取得する便利関数
-
-    Args:
-        bbox: キャプチャ領域
-        format: 画像形式
-
-    Returns:
-        str: base64エンコードされた画像データ
-    """
-    if not (MSS_AVAILABLE and PIL_AVAILABLE):
-        print("スクリーンキャプチャライブラリが利用できません")
-        return None
-
-    capture = ScreenCapture(bbox)
-    return capture.capture_as_base64(format=format)
-
-
-def save_screenshot(filename: str = None, bbox: Optional[Dict[str, int]] = None) -> str:
-    """
-    スクリーンショットを保存する便利関数
-
-    Args:
-        filename: ファイル名
-        bbox: キャプチャ領域
-
-    Returns:
-        str: 保存されたファイルパス
-    """
-    if not (MSS_AVAILABLE and PIL_AVAILABLE):
-        print("スクリーンキャプチャライブラリが利用できません")
-        return ""
-
-    capture = ScreenCapture(bbox)
-    return capture.save_screenshot(filename)
-
-
 if __name__ == "__main__":
     # テスト実行
     print("Screen Captureを開始...")
-    print(f"MSS利用可能: {MSS_AVAILABLE}")
-    print(f"PIL利用可能: {PIL_AVAILABLE}")
 
-    if MSS_AVAILABLE and PIL_AVAILABLE:
-        # 画面情報取得
-        capture = ScreenCapture()
-        info = capture.get_screen_info()
-        print(f"スクリーン情報: {info}")
+    # 画面情報取得
+    capture = ScreenCapture()
+    info = capture.get_screen_info()
+    print(f"スクリーン情報: {info}")
 
-        # スクリーンショット保存テスト
-        print("\nスクリーンショット保存テスト...")
-        filepath = capture.save_screenshot()
-        if filepath:
-            print(f"保存成功: {filepath}")
-        else:
-            print("保存失敗")
-
-        # base64変換テスト
-        print("\nbase64変換テスト...")
-        base64_data = capture.capture_as_base64()
-        if base64_data:
-            print(f"base64変換成功: {len(base64_data)} 文字")
-        else:
-            print("base64変換失敗")
-
+    # スクリーンショット保存テスト
+    print("\nスクリーンショット保存テスト...")
+    filepath = capture.save_screenshot()
+    if filepath:
+        print(f"保存成功: {filepath}")
     else:
-        print("必要なライブラリがインストールされていません")
-        print("pip install mss pillow でインストールしてください")
+        print("保存失敗")
+
+    # base64変換テスト
+    print("\nbase64変換テスト...")
+    base64_data = capture.capture_as_base64()
+    if base64_data:
+        print(f"base64変換成功: {len(base64_data)} 文字")
+    else:
+        print("base64変換失敗")
