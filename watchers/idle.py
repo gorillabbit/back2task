@@ -16,9 +16,9 @@ def get_idle_ms() -> int:
         lii = LASTINPUTINFO()
         lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
 
-        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):
-            current_tick = ctypes.windll.kernel32.GetTickCount()
-            idle_time = current_tick - lii.dwTime
+        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):  # type: ignore[attr-defined]
+            current_tick = int(ctypes.windll.kernel32.GetTickCount())  # type: ignore[attr-defined]
+            idle_time = int(current_tick - lii.dwTime)
             return max(0, idle_time)
         return 0
     except Exception:

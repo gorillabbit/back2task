@@ -7,7 +7,7 @@ import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -38,7 +38,7 @@ class EventPump:
         self.running = False
 
         # 各Watcherの状態
-        self.last_window_info = {}
+        self.last_window_info: dict[str, str | None] = {}
         self.last_idle_time = 0
         self.last_screenshot = ""
         self.screenshot_enabled = True
@@ -173,7 +173,7 @@ class EventPump:
             # ステータスエンドポイントで確認
             status_url = self.api_url.replace("/events", "/status")
             response = requests.get(status_url, timeout=3)
-            return response.status_code == 200
+            return cast(int, response.status_code) == 200
 
         except Exception:
             return False

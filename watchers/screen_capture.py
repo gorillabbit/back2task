@@ -23,7 +23,7 @@ class ScreenCapture:
 
         """
         self.bbox = bbox or self._get_primary_monitor_bbox()
-        self.last_capture_time = 0
+        self.last_capture_time: float = 0.0
 
     def _get_primary_monitor_bbox(self) -> dict[str, int]:
         """プライマリモニターの実際の解像度を取得."""

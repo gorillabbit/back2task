@@ -4,7 +4,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -66,7 +66,7 @@ Focus on being helpful, not annoying.
 """.strip()
 
         # 最後のAPI呼び出し時刻（レート制限用）
-        self.last_call_time = 0
+        self.last_call_time: float = 0.0
         self.min_call_interval = 1.0  # 最小呼び出し間隔（秒）
 
     def is_available(self) -> bool:
@@ -83,7 +83,8 @@ Focus on being helpful, not annoying.
         except requests.RequestException:
             return False
         else:
-            return response.status_code == HTTP_OK
+            status_code = cast(int, response.status_code)
+            return status_code == HTTP_OK
 
     def _rate_limit(self) -> None:
         """レート制限を適用."""
@@ -159,7 +160,7 @@ Decide the best nudging action now.
             context_prompt = self._build_context_prompt(task, observations)
 
             # メッセージを構築（スクリーンショットが利用可能な場合は画像も含む）
-            messages = [
+            messages: list[dict[str, Any]] = [
                 {"role": "system", "content": self.system_prompt},
             ]
 

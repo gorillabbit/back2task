@@ -88,3 +88,6 @@ show_error_codes = true
 warn_return_any = true
 warn_unused_ignores = true
 ignore_missing_imports = true
+explicit_package_bases = true
+disable_error_code = ["import-untyped"]
+exclude = ["^tests/", "test_integration.py"]
