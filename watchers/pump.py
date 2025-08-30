@@ -5,6 +5,7 @@ import os
 # 各Watcherをインポート
 import sys
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 

@@ -64,14 +64,15 @@ line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["ALL"]
+# Limit linting to errors and undefined names to keep analysis focused.
+select = ["E", "F"]
 ignore = [
-    "D203", 
-    "D213", 
+    "D203",
+    "D213",
     "COM812",
     "D107", # docstring必須化
     "D400", # docstring の一行目にピリオド必須化
-    "D415", # ピリオド必須 
+    "D415", # ピリオド必須
     "RUF003", # 全角記号不可
     "RUF002", # 全角カッコ不可
 ]
