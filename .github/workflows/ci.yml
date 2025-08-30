@@ -20,10 +20,12 @@ jobs:
           pip install -r requirements.txt
       - name: Install linters and type checker
         run: |
-          pip install ruff mypy
+          pip install ruff mypy pyright
       - name: Ruff (lint)
         run: ruff check .
       - name: MyPy (type check)
         run: mypy .
+      - name: Pyright (type check)
+        run: pyright --project pyproject.toml
       - name: Run tests
         run: pytest
