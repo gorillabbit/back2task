@@ -3,10 +3,12 @@
 import json
 import os
 import time
+import importlib
 from dataclasses import dataclass
+from types import ModuleType
 from typing import Any, cast
 
-import requests
+requests = cast(ModuleType, importlib.import_module("requests"))
 
 HTTP_OK = 200
 IDLE_LONG_MS = 60_000

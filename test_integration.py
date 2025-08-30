@@ -6,13 +6,16 @@
 
 import sys
 import time
-
-import requests
+import importlib
+from types import ModuleType
+from typing import Any, cast
 
 # 各コンポーネントをインポート
 from api.services.llm import LLMService
 from ui.notifications import NotificationLevel, NotificationService
 from watchers.pump import EventPump
+
+requests = cast(ModuleType, importlib.import_module("requests"))
 
 
 class Back2TaskIntegrationTest:
@@ -22,13 +25,14 @@ class Back2TaskIntegrationTest:
         self.api_url = "http://localhost:5577"
         # LM Studio Local Server (OpenAI 互換) を既定に統一
         self.llm_url = "http://localhost:1234"
-        self.test_results = {}
+        self.test_results: dict[str, bool] = {}
 
     def test_api_availability(self) -> bool:
         """API可用性テスト."""
         try:
             response = requests.get(f"{self.api_url}/status", timeout=5)
-            return response.status_code == 200
+            status_code = cast(int, response.status_code)
+            return status_code == 200
         except Exception:
             return False
 
@@ -36,7 +40,8 @@ class Back2TaskIntegrationTest:
         """LLM可用性テスト"""
         try:
             response = requests.get(f"{self.llm_url}/v1/models", timeout=5)
-            if response.status_code == 200:
+            status_code = cast(int, response.status_code)
+            if status_code == 200:
                 response.json()
                 return True
             return False
@@ -111,7 +116,7 @@ class Back2TaskIntegrationTest:
                 pass
 
             # テストケース
-            test_cases = [
+            test_cases: list[dict[str, Any]] = [
                 {
                     "name": "生産的活動",
                     "observations": {
@@ -247,7 +252,7 @@ class Back2TaskIntegrationTest:
 
             # 4. シミュレーション: 生産的な作業 → 脱線 → 通知 → 復帰
 
-            scenarios = [
+            scenarios: list[dict[str, Any]] = [
                 {
                     "description": "生産的な作業",
                     "event": {

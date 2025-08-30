@@ -1,21 +1,17 @@
 """Event pump that aggregates watcher data and posts to the API."""
 
-import os
-
-# 各Watcherをインポート
-import sys
+import importlib
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from types import ModuleType
 from typing import Any, cast
 
-import requests
+from .active_window import get_active_app
+from .idle import get_idle_ms
+from .screen_capture import capture_screenshot_base64
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from watchers.active_window import get_active_app
-from watchers.idle import get_idle_ms
-from watchers.screen_capture import capture_screenshot_base64
+requests = cast(ModuleType, importlib.import_module("requests"))
 
 
 class EventPump:
