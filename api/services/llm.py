@@ -1,3 +1,5 @@
+"""LLM integration via OpenAI-compatible API (e.g., LM Studio)."""
+
 import json
 import os
 import time
@@ -26,10 +28,12 @@ class LLMService:
         model_name: str = "google/gemma-3-4b",
         timeout: float = 20.0,
     ) -> None:
-        """Args:
-        base_url: OpenAI互換APIのベースURL（LM Studio の場合は http://localhost:1234）
-        model_name: 使用するモデル名（既定: google/gemma-3-4b）
-        timeout: APIタイムアウト（秒）.
+        """初期化
+
+        Args:
+        base_url: OpenAI互換APIのベースURL(LM Studio の場合は http://localhost:1234)
+        model_name: 使用するモデル名(既定: google/gemma-3-4b)
+        timeout: APIタイムアウト(秒)
 
         """
         self.base_url = base_url.rstrip("/")
@@ -41,7 +45,8 @@ class LLMService:
 
         # システムプロンプト
         self.system_prompt = """
-You are a productivity nudging assistant. Analyze the user's current activity and decide the best nudging action.
+You are a productivity nudging assistant.
+Analyze the user's current activity and decide the best nudging action.
 
 Return ONLY a JSON object with these exact keys:
 - action: one of "quiet", "gentle_nudge", "strong_nudge"
@@ -250,6 +255,3 @@ def create_llm_service(
     resolved_base = os.getenv("LLM_URL") or base_url or "http://localhost:1234"
     resolved_model = os.getenv("LLM_MODEL") or model_name or "google/gemma-3-4b"
     return LLMService(base_url=resolved_base, model_name=resolved_model)
-
-
-"""LLM service module (slimmed for LM Studio)."""

@@ -1,4 +1,6 @@
-import ctypes  # 再確認（型定義に使用）
+"""Windows idle detection helpers using LASTINPUTINFO."""
+
+import ctypes  # 再確認(型定義に使用)
 import time
 
 
@@ -37,11 +39,9 @@ def is_idle(threshold_ms: int = 5000) -> bool:
     return idle_time >= threshold_ms
 
 
-if __name__ == "__main__":
-    # テスト実行
-
-    # 10回監視して終了
-    for _i in range(10):
-        idle_ms = get_idle_ms()
-        idle_state = is_idle(5000)  # 5秒閾値
-        time.sleep(2)
+if __name__ == "__main__":  # pragma: no cover
+    # Simple manual check loop (development convenience)
+    for _ in range(3):
+        _ = get_idle_ms()
+        _ = is_idle(5000)  # 5秒閾値
+        time.sleep(1)

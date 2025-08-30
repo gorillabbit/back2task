@@ -1,3 +1,5 @@
+"""Windows active window helpers using win32 APIs."""
+
 import time
 
 import psutil
@@ -27,9 +29,8 @@ def get_active_app() -> dict[str, str | None]:
         return {"active_app": None, "title": None}
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # テスト実行
-
-    for _ in range(5):
-        result = get_active_app()
-        time.sleep(2)
+    for _ in range(3):
+        _ = get_active_app()
+        time.sleep(1)

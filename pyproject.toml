@@ -72,7 +72,13 @@ ignore = [
     "D107", # docstring必須化
     "D400", # docstring の一行目にピリオド必須化
     "D415", # ピリオド必須 
+    "RUF003", # 全角記号不可
+    "RUF002", # 全角カッコ不可
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D101", "D102", "D103", "D104"]
+"test_integration.py" = ["D100"]
 
 [tool.mypy]
 python_version = "3.11"

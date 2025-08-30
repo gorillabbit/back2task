@@ -26,6 +26,7 @@ import platform
 import time
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class NotificationLevel(Enum):
@@ -52,7 +53,7 @@ class NotificationService:
     def __init__(self, config: NotificationConfig | None = None) -> None:
         self.platform = platform.system()
         self.config = config or NotificationConfig()
-        self._history: list[dict] = []
+        self._history: list[dict[str, Any]] = []
 
     def notify(
         self,
@@ -109,7 +110,7 @@ class NotificationService:
 
     # ------------------------------------------------------------------
     # Query helpers
-    def get_capabilities(self) -> dict:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return a very small capability description.
 
         The implementation is intentionally simple – the tests merely expect
@@ -121,7 +122,7 @@ class NotificationService:
             "supports_flash": self.platform == "Windows",
         }
 
-    def get_notification_history(self) -> list[dict]:
+    def get_notification_history(self) -> list[dict[str, Any]]:
         """Return a copy of the notification history."""
         return list(self._history)
 
@@ -152,12 +153,12 @@ def notify(
 
 
 def notify_gentle_nudge(message: str) -> bool:
-    """便利関数：軽い注意喚起."""
+    """便利関数: 軽い注意喚起."""
     return notify("Back2Task", message, NotificationLevel.WARNING)
 
 
 def notify_strong_nudge(message: str) -> bool:
-    """便利関数：強い注意喚起."""
+    """便利関数: 強い注意喚起."""
     return notify(
         "Back2Task - Focus!",
         message,
@@ -168,15 +169,15 @@ def notify_strong_nudge(message: str) -> bool:
 
 
 def notify_task_complete(task_name: str) -> bool:
-    """便利関数：タスク完了通知."""
+    """便利関数: タスク完了通知."""
     return notify(
         "タスク完了",
-        f"'{task_name}' が完了しました！",
+        f"'{task_name}' が完了しました",
         NotificationLevel.INFO,
         sound=True,
     )
 
 
-if __name__ == "__main__":
-    # テスト実行
-    service = NotificationService()
+if __name__ == "__main__":  # pragma: no cover
+    # Simple manual smoke test
+    NotificationService().get_capabilities()

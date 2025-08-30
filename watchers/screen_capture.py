@@ -1,3 +1,5 @@
+"""Screen capture utilities built on top of mss and PIL."""
+
 import base64
 import os
 import tempfile
@@ -13,7 +15,9 @@ class ScreenCapture:
     """スクリーンキャプチャを取得するクラス."""
 
     def __init__(self, bbox: dict[str, int] | None = None) -> None:
-        """Args:
+        """初期化する
+
+        Args:
         bbox: キャプチャ領域 {"top": int, "left": int, "width": int, "height": int}
              Noneの場合は画面全体.
 
@@ -141,23 +145,11 @@ class ScreenCapture:
             return {"available": False, "error": str(e)}
 
 
-if __name__ == "__main__":
-    # テスト実行
+def capture_screenshot_base64(
+    format_type: str = "PNG", quality: int = 80
+) -> str | None:
+    """Capture the primary monitor and return base64 image data.
 
-    # 画面情報取得
-    capture = ScreenCapture()
-    info = capture.get_screen_info()
-
-    # スクリーンショット保存テスト
-    filepath = capture.save_screenshot()
-    if filepath:
-        pass
-    else:
-        pass
-
-    # base64変換テスト
-    base64_data = capture.capture_as_base64()
-    if base64_data:
-        pass
-    else:
-        pass
+    This is a convenience wrapper used by the event pump.
+    """
+    return ScreenCapture().capture_as_base64(format_type=format_type, quality=quality)

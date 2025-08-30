@@ -1,3 +1,5 @@
+"""FastAPI app exposing Back2Task endpoints and simple monitoring UI."""
+
 from collections import deque
 from dataclasses import asdict
 from typing import Any
@@ -44,6 +46,7 @@ class FocusUpdate(BaseModel):
     @field_validator("target")
     @classmethod
     def target_must_not_be_empty(cls, v: str) -> str:
+        """ターゲットが存在すること"""
         if not v or not v.strip():
             msg = "target must not be empty"
             raise ValueError(msg)
@@ -78,7 +81,7 @@ async def startup_event() -> None:
 
 
 @app.post("/focus/update")
-async def update_focus_target(req: FocusUpdate):
+async def update_focus_target(req: FocusUpdate) -> dict[str, Any]:
     """ユーザーのフォーカスターゲット（集中したい作業内容）を更新する."""
     STATE["focus_target"] = req.target
     log_message(f"Focus target updated to: {req.target}")
@@ -86,7 +89,7 @@ async def update_focus_target(req: FocusUpdate):
 
 
 @app.post("/events")
-async def ingest_event(event: Event):
+async def ingest_event(event: Event) -> dict[str, Any]:
     """監視イベントを取り込み、AIで生産性を判定する."""
     llm_service: LLMService = STATE["llm_service"]
     if not llm_service:
@@ -105,14 +108,15 @@ async def ingest_event(event: Event):
     STATE["last_event"] = event.model_dump()
 
     log_message(
-        f"Event processed. Productive: {is_productive}. Nudge action: {policy.action if policy else 'N/A'}",
+        f"Event processed. Productive: {is_productive}. "
+        "Nudge action: {policy.action if policy else 'N/A'}",
     )
 
     return {"ok": True, "productive": is_productive, "policy": STATE["last_nudge"]}
 
 
 @app.get("/status")
-async def get_current_status():
+async def get_current_status() -> dict[str, Any]:
     """現在のシステム状態を取得する."""
     return {
         k: v for k, v in STATE.items() if k not in ["llm_service", "logs", "last_event"]
@@ -123,7 +127,7 @@ async def get_current_status():
 
 
 @app.get("/api/monitoring_data")
-async def get_monitoring_data():
+async def get_monitoring_data() -> dict[str, Any]:
     """モニタリングUIに最新データを提供する."""
     return {
         "last_event": STATE["last_event"],
@@ -135,7 +139,7 @@ async def get_monitoring_data():
 
 
 @app.get("/monitoring", response_class=HTMLResponse)
-async def get_monitoring_page():
+async def get_monitoring_page() -> HTMLResponse:
     """モニタリング用のWebページを返す."""
     html_content = """
     <!DOCTYPE html>
@@ -217,7 +221,7 @@ async def get_monitoring_page():
         </script>
     </body>
     </html>
-    """
+    """  # noqa: E501
     return HTMLResponse(content=html_content)
 
 

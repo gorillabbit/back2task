@@ -1,9 +1,10 @@
+"""Event pump that aggregates watcher data and posts to the API."""
+
 import os
 
 # 各Watcherをインポート
 import sys
 import time
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -24,9 +25,11 @@ class EventPump:
         api_url: str = "http://localhost:5577/events",
         interval: float = 2.0,
     ) -> None:
-        """Args:
+        """初期化する
+
+        Args:
         api_url: イベント送信先のAPIエンドポイント
-        interval: データ収集間隔（秒）.
+        interval: データ収集間隔(秒)
 
         """
         self.api_url = api_url
