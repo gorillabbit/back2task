@@ -8,17 +8,21 @@ echo ================================
 echo.
 
 REM --- 1. Setup Environment ---
-cd /d "%~dp0"
-set "PYTHONPATH=%cd%"
+REM Move to project root (parent of this script directory)
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%.." >nul
+set "REPO_ROOT=%cd%"
+set "PYTHONPATH=%REPO_ROOT%"
 
 REM --- Load common env from .env.local (required) ---
-if exist ".env.local" (
-    for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env.local") do (
+if exist "%REPO_ROOT%\.env.local" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%REPO_ROOT%\.env.local") do (
         if not "%%A"=="" set "%%A=%%B"
     )
     echo [SETUP] Loaded .env.local
 ) else (
     echo [ERROR] .env.local not found at project root.
+    popd >nul
     endlocal
     exit /b 1
 )
@@ -50,6 +54,7 @@ echo [SETUP] Installing/Verifying dependencies...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install dependencies from requirements.txt.
+    popd >nul
     endlocal
     exit /b 1
 )
@@ -122,11 +127,11 @@ echo ================================
 echo  Back2Task is now running!
 echo ================================
 echo.
-echo   - API Server: http://127.0.0.1:5577
+echo   - Monitor: http://127.0.0.1:5577/monitoring
 echo   - Event Pump: Running
 echo   - LLM Server: %LLM_STATUS%
 echo.
 echo To stop the services, run 'stop.bat'
 echo.
-
+popd >nul
 endlocal

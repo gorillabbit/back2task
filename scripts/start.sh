@@ -12,15 +12,16 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🎯 Back2Task 起動中...${NC}"
 echo "================================"
 
-# プロジェクトルート取得
+# プロジェクトルート取得（このスクリプトの親ディレクトリ）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 # 共通環境(.env.local)の読み込み（必須）
-if [[ -f .env.local ]]; then
+if [[ -f "$REPO_ROOT/.env.local" ]]; then
     set -a
     # shellcheck disable=SC1091
-    source .env.local
+    source "$REPO_ROOT/.env.local"
     set +a
     echo -e "${GREEN}✅ .env.local を読み込みました${NC}"
 else
@@ -47,8 +48,8 @@ fi
 # 仮想環境をアクティベート
 source venv/bin/activate
 
-# PYTHONPATH設定
-export PYTHONPATH="$SCRIPT_DIR"
+# PYTHONPATH設定（プロジェクトルート）
+export PYTHONPATH="$REPO_ROOT"
 
 # PIDファイルディレクトリ作成
 mkdir -p /tmp/back2task
