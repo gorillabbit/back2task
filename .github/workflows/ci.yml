@@ -18,13 +18,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run tests
+      - name: Install linters and type checker
         run: |
-          pytest -q || {
-            code=$?
-            if [ "$code" -ne 5 ]; then
-              exit $code
-            else
-              echo "No tests collected"
-            fi
-          }
+          pip install ruff mypy
+      - name: Ruff (lint)
+        run: ruff check .
+      - name: MyPy (type check)
+        run: mypy .
+      - name: Run tests
+        run: pytest

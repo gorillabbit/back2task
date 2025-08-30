@@ -32,12 +32,19 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-mock>=3.12.0",
 ]
+dev = [
+    "ruff>=0.6.2",
+    "mypy>=1.11.1",
+    "black>=24.3.0",
+    "isort>=5.13.2",
+]
 
 [tool.pytest.ini_options]
+# Limit test discovery to the dedicated tests directory.
+testpaths = ["tests"]
 # Look for tests in the repository root.  The previous configuration pointed to
 # a non-existent ``tests`` directory which prevented ``pytest`` from adding the
 # project to ``sys.path`` during test collection, leading to import errors.
-testpaths = ["."]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
@@ -51,3 +58,32 @@ target-version = ['py311']
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203", 
+    "D213", 
+    "COM812",
+    "D107", # docstring必須化
+    "D400", # docstring の一行目にピリオド必須化
+    "D415", # ピリオド必須 
+    "RUF003", # 全角記号不可
+    "RUF002", # 全角カッコ不可
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D101", "D102", "D103", "D104"]
+"test_integration.py" = ["D100"]
+
+[tool.mypy]
+python_version = "3.11"
+pretty = true
+show_error_codes = true
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true

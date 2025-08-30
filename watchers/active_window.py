@@ -1,13 +1,14 @@
-import platform
-import psutil
+"""Windows active window helpers using win32 APIs."""
+
 import time
-from typing import Dict, Optional
+
+import psutil
 import win32gui
 import win32process
 
 
-def get_active_app() -> Dict[str, Optional[str]]:
-    """Windows環境での前面ウィンドウ取得"""
+def get_active_app() -> dict[str, str | None]:
+    """Windows環境での前面ウィンドウ取得."""
     try:
         hwnd = win32gui.GetForegroundWindow()
         if not hwnd:
@@ -28,14 +29,8 @@ def get_active_app() -> Dict[str, Optional[str]]:
         return {"active_app": None, "title": None}
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # テスト実行
-    print("Active Window Watcherを開始...")
-    print(f"プラットフォーム: {platform.system()}")
-
-    for _ in range(5):
-        result = get_active_app()
-        print(f"アクティブアプリ: {result['active_app']}")
-        print(f"ウィンドウタイトル: {result['title']}")
-        print("-" * 40)
-        time.sleep(2)
+    for _ in range(3):
+        _ = get_active_app()
+        time.sleep(1)

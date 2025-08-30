@@ -1,35 +1,40 @@
-import requests
+"""LLM integration via OpenAI-compatible API (e.g., LM Studio)."""
+
 import json
-import time
 import os
-from typing import Dict, Optional, Any
+import time
 from dataclasses import dataclass
+from typing import Any
+
+import requests
 
 
 @dataclass
 class NudgingPolicy:
-    """Nudging policy response structure"""
+    """Nudging policy response structure."""
 
     action: str  # "quiet", "gentle_nudge", "strong_nudge"
     reason: str
-    tip: Optional[str] = None
+    tip: str | None = None
     confidence: float = 0.5
 
 
 class LLMService:
-    """OpenAI互換APIクライアント（既定: LM Studio + Gemma 3 4B）"""
+    """OpenAI互換APIクライアント（既定: LM Studio + Gemma 3 4B）."""
 
     def __init__(
         self,
         base_url: str = "http://localhost:1234",
         model_name: str = "google/gemma-3-4b",
         timeout: float = 20.0,
-    ):
-        """
+    ) -> None:
+        """初期化
+
         Args:
-            base_url: OpenAI互換APIのベースURL（LM Studio の場合は http://localhost:1234）
-            model_name: 使用するモデル名（既定: google/gemma-3-4b）
-            timeout: APIタイムアウト（秒）
+        base_url: OpenAI互換APIのベースURL(LM Studio の場合は http://localhost:1234)
+        model_name: 使用するモデル名(既定: google/gemma-3-4b)
+        timeout: APIタイムアウト(秒)
+
         """
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -40,7 +45,8 @@ class LLMService:
 
         # システムプロンプト
         self.system_prompt = """
-You are a productivity nudging assistant. Analyze the user's current activity and decide the best nudging action.
+You are a productivity nudging assistant.
+Analyze the user's current activity and decide the best nudging action.
 
 Return ONLY a JSON object with these exact keys:
 - action: one of "quiet", "gentle_nudge", "strong_nudge"
@@ -60,7 +66,7 @@ Focus on being helpful, not annoying.
         self.min_call_interval = 1.0  # 最小呼び出し間隔（秒）
 
     def is_available(self) -> bool:
-        """LLMサービスが利用可能かチェック"""
+        """LLMサービスが利用可能かチェック."""
         try:
             # Authorization ヘッダは必要な場合のみ付与
             if self.api_key:
@@ -75,16 +81,16 @@ Focus on being helpful, not annoying.
         except Exception:
             return False
 
-    def _rate_limit(self):
-        """レート制限を適用"""
+    def _rate_limit(self) -> None:
+        """レート制限を適用."""
         now = time.time()
         elapsed = now - self.last_call_time
         if elapsed < self.min_call_interval:
             time.sleep(self.min_call_interval - elapsed)
         self.last_call_time = time.time()
 
-    def _build_context_prompt(self, task: str, observations: Dict[str, Any]) -> str:
-        """観測データからコンテキストプロンプトを構築"""
+    def _build_context_prompt(self, task: str, observations: dict[str, Any]) -> str:
+        """観測データからコンテキストプロンプトを構築."""
         active_app = observations.get("active_app") or "unknown"
         title = observations.get("title") or ""
         url = observations.get("url") or ""
@@ -99,7 +105,7 @@ Focus on being helpful, not annoying.
         else:
             idle_desc = "active"
 
-        context = f"""
+        return f"""
 Task: {task}
 Current Activity:
 - App: {active_app}
@@ -112,13 +118,12 @@ Please analyze the screenshot (if available) to determine if the user is focused
 Decide the best nudging action now.
 """.strip()
 
-        return context
-
     def decide_nudging_policy(
-        self, task: str, observations: Dict[str, Any]
+        self,
+        task: str,
+        observations: dict[str, Any],
     ) -> NudgingPolicy:
-        """
-        観測データに基づいてnudging policyを決定
+        """観測データに基づいてnudging policyを決定.
 
         Args:
             task: 現在のタスク名
@@ -126,6 +131,7 @@ Decide the best nudging action now.
 
         Returns:
             NudgingPolicy: 決定されたnudging policy
+
         """
         if not self.is_available():
             # LLM不可時は静的にquietを返す
@@ -159,11 +165,11 @@ Decide the best nudging action now.
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/png;base64,{screenshot}"
+                                    "url": f"data:image/png;base64,{screenshot}",
                                 },
                             },
                         ],
-                    }
+                    },
                 )
             else:
                 # テキストのみメッセージ
@@ -190,9 +196,11 @@ Decide the best nudging action now.
             )
 
             if response.status_code != 200:
-                print(f"LLM API エラー: HTTP {response.status_code}")
                 return NudgingPolicy(
-                    action="quiet", reason="LLM error", tip=None, confidence=0.0
+                    action="quiet",
+                    reason="LLM error",
+                    tip=None,
+                    confidence=0.0,
                 )
 
             response_data = response.json()
@@ -208,28 +216,35 @@ Decide the best nudging action now.
                     confidence=0.8,
                 )
             except json.JSONDecodeError:
-                print(f"LLM JSON パースエラー: {content}")
                 return NudgingPolicy(
-                    action="quiet", reason="LLM parse error", tip=None, confidence=0.0
+                    action="quiet",
+                    reason="LLM parse error",
+                    tip=None,
+                    confidence=0.0,
                 )
 
         except requests.exceptions.Timeout:
-            print("LLM API タイムアウト")
             return NudgingPolicy(
-                action="quiet", reason="LLM timeout", tip=None, confidence=0.0
+                action="quiet",
+                reason="LLM timeout",
+                tip=None,
+                confidence=0.0,
             )
-        except Exception as e:
-            print(f"LLM API 予期しないエラー: {e}")
+        except Exception:
             return NudgingPolicy(
-                action="quiet", reason="LLM exception", tip=None, confidence=0.0
+                action="quiet",
+                reason="LLM exception",
+                tip=None,
+                confidence=0.0,
             )
 
 
 # 便利関数
 def create_llm_service(
-    base_url: Optional[str] = None, model_name: Optional[str] = None
+    base_url: str | None = None,
+    model_name: str | None = None,
 ) -> LLMService:
-    """LLMサービスのファクトリ関数
+    """LLMサービスのファクトリ関数.
 
     環境変数で設定可能:
     - LLM_URL: OpenAI互換APIのベースURL（例: http://localhost:1234）
@@ -240,6 +255,3 @@ def create_llm_service(
     resolved_base = os.getenv("LLM_URL") or base_url or "http://localhost:1234"
     resolved_model = os.getenv("LLM_MODEL") or model_name or "google/gemma-3-4b"
     return LLMService(base_url=resolved_base, model_name=resolved_model)
-
-
-"""LLM service module (slimmed for LM Studio)."""

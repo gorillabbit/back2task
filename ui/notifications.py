@@ -21,12 +21,12 @@ provide minimal cross‑platform fallbacks and keep a record of all notification
 requests.
 """
 
-import platform
 import ctypes
+import platform
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import Any
 
 
 class NotificationLevel(Enum):
@@ -50,10 +50,10 @@ class NotificationConfig:
 class NotificationService:
     """Minimal notification service with history tracking."""
 
-    def __init__(self, config: Optional[NotificationConfig] = None):
+    def __init__(self, config: NotificationConfig | None = None) -> None:
         self.platform = platform.system()
         self.config = config or NotificationConfig()
-        self._history: List[dict] = []
+        self._history: list[dict[str, Any]] = []
 
     def notify(
         self,
@@ -61,8 +61,8 @@ class NotificationService:
         message: str,
         level: NotificationLevel = NotificationLevel.INFO,
         *,
-        sound: Optional[bool] = None,
-        flash: Optional[bool] = None,
+        sound: bool | None = None,
+        flash: bool | None = None,
     ) -> bool:
         """Display a notification and record it.
 
@@ -71,7 +71,6 @@ class NotificationService:
         failure (``False``).  ``sound`` and ``flash`` can override the default
         configuration values but are otherwise ignored on non‑Windows systems.
         """
-
         sound = self.config.sound if sound is None else sound
         flash = self.config.flash if flash is None else flash
 
@@ -105,40 +104,37 @@ class NotificationService:
                 "flash": flash,
                 "timestamp": time.time(),
                 "delivered": success,
-            }
+            },
         )
         return success
 
     # ------------------------------------------------------------------
     # Query helpers
-    def get_capabilities(self) -> dict:
+    def get_capabilities(self) -> dict[str, Any]:
         """Return a very small capability description.
 
         The implementation is intentionally simple – the tests merely expect
         the method to exist and to return a dictionary.
         """
-
         return {
             "platform": self.platform,
             "supports_sound": self.platform == "Windows",
             "supports_flash": self.platform == "Windows",
         }
 
-    def get_notification_history(self) -> List[dict]:
+    def get_notification_history(self) -> list[dict[str, Any]]:
         """Return a copy of the notification history."""
-
         return list(self._history)
 
 
 # 便利関数とグローバルインスタンス
-_default_service: Optional[NotificationService] = None
+_default_service: NotificationService | None = None
 
 
 def get_notification_service(
-    config: Optional[NotificationConfig] = None,
+    config: NotificationConfig | None = None,
 ) -> NotificationService:
     """Return a lazily-instantiated default :class:`NotificationService`."""
-
     global _default_service
     if _default_service is None:
         _default_service = NotificationService(config)
@@ -152,33 +148,36 @@ def notify(
     **kwargs,
 ) -> bool:
     """Convenience wrapper around :meth:`NotificationService.notify`."""
-
     service = get_notification_service()
     return service.notify(title, message, level, **kwargs)
 
 
 def notify_gentle_nudge(message: str) -> bool:
-    """便利関数：軽い注意喚起"""
+    """便利関数: 軽い注意喚起."""
     return notify("Back2Task", message, NotificationLevel.WARNING)
 
 
 def notify_strong_nudge(message: str) -> bool:
-    """便利関数：強い注意喚起"""
+    """便利関数: 強い注意喚起."""
     return notify(
-        "Back2Task - Focus!", message, NotificationLevel.URGENT, sound=True, flash=True
+        "Back2Task - Focus!",
+        message,
+        NotificationLevel.URGENT,
+        sound=True,
+        flash=True,
     )
 
 
 def notify_task_complete(task_name: str) -> bool:
-    """便利関数：タスク完了通知"""
+    """便利関数: タスク完了通知."""
     return notify(
         "タスク完了",
-        f"'{task_name}' が完了しました！",
+        f"'{task_name}' が完了しました",
         NotificationLevel.INFO,
         sound=True,
     )
 
 
-if __name__ == "__main__":
-    # テスト実行
-    service = NotificationService()
+if __name__ == "__main__":  # pragma: no cover
+    # Simple manual smoke test
+    NotificationService().get_capabilities()
