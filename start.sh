@@ -16,6 +16,24 @@ echo "================================"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# 共通環境(.env.local)の読み込み（必須）
+if [[ -f .env.local ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env.local
+    set +a
+    echo -e "${GREEN}✅ .env.local を読み込みました${NC}"
+else
+    echo -e "${RED}❌ .env.local が見つかりません。プロジェクト直下に作成してください${NC}"
+    exit 1
+fi
+
+# 必須変数チェック（早期終了）
+if [[ -z "${LLM_URL:-}" || -z "${LLM_MODEL:-}" ]]; then
+    echo -e "${RED}❌ LLM_URL と LLM_MODEL は .env.local に設定してください${NC}"
+    exit 1
+fi
+
 # 仮想環境確認
 if [[ ! -d "venv" ]]; then
     echo -e "${YELLOW}⚠️  仮想環境が見つかりません。セットアップを実行中...${NC}"
@@ -109,15 +127,14 @@ else
     exit 1
 fi
 
-# 3. LLMサーバーチェック（オプション）
+# 3. LLMサーバーチェック
 echo -e "${BLUE}🤖 LLMサーバーチェック中...${NC}"
-LLM_URL_CHECK=${LLM_URL:-http://localhost:1234}
-if curl -s "${LLM_URL_CHECK}/v1/models" > /dev/null 2>&1; then
+if curl -s "${LLM_URL}/v1/models" > /dev/null 2>&1; then
     echo -e "${GREEN}   ✅ LLMサーバー利用可能${NC}"
-    LLM_STATUS="利用可能 (${LLM_URL_CHECK})"
+    LLM_STATUS="利用可能 (${LLM_URL})"
 else
-    echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません（AI 無効）${NC}"
-    LLM_STATUS="なし（AI 無効）"
+    echo -e "${YELLOW}   ⚠️  LLMサーバーに接続できません（AI 無効）${NC}"
+    LLM_STATUS="未接続（AI 無効）"
 fi
 
 # 起動完了

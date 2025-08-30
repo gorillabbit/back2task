@@ -87,23 +87,49 @@ pip install -r requirements.txt
 ### 3.x LM Studio を使う（Gemma 3 4B, 画像入力対応）
 
 LM Studio の Local Server は OpenAI 互換 API を提供します。本プロジェクトはそのまま接続できます。
+各スクリプトが `.env.local` を読み込み、その中にある値が使われます
 
--   LM Studio でモデルをロード（例: `google/gemma-3-4b`）。Local Server を起動（デフォルト: `http://localhost:1234/v1`）。
--   Back2Task 側は環境変数で接続先とモデル名を指定します。
+./start.sh
+
+````
+
+補助スクリプトは下記の「lms CLI を使って起動/停止（推奨）」の項をご参照ください。
+
+#### lms CLI を使って起動/停止（推奨）
+
+LM Studio の公式 CLI `lms` が使える場合は、次のワンライナーで Gemma をロードしてローカルサーバーを開始できます。
 
 ```bash
-# Windows (PowerShell)
-$env:LLM_URL = "http://localhost:1234"   # 末尾 /v1 は不要
-$env:LLM_MODEL = "google/gemma-3-4b"
-# 認証が必要なら（LM Studio 設定に合わせる）
-$env:LLM_API_KEY = "lm-studio"
-./start.bat
+# モデルをロードしてサーバー起動（サーバーは固定で 127.0.0.1:1234）
+lms load google/gemma-3-4b
+lms server start
 
-# macOS/Linux (bash/zsh)
-export LLM_URL="http://localhost:1234"
-export LLM_MODEL="google/gemma-3-4b"
-export LLM_API_KEY="lm-studio"   # 任意
+# Back2Task 起動（.env.local を利用）
 ./start.sh
+
+# 停止
+lms server stop
+````
+
+スクリプト化したコマンドも用意しています:
+
+-   Windows: `scripts\lms_start_gemma.bat` / `scripts\lms_stop_gemma.bat`
+-   macOS/Linux: `scripts/lms_start_gemma.sh` / `scripts/lms_stop_gemma.sh`
+
+使い方の例（.env.local を利用）:
+
+```bash
+# Windows (cmd)
+scripts\lms_start_gemma.bat
+start.bat
+
+# macOS/Linux (bash)
+bash scripts/lms_start_gemma.sh
+./start.sh
+
+# 停止（共通）
+scripts\lms_stop_gemma.bat    # Windows
+bash scripts/lms_stop_gemma.sh # macOS/Linux
 ```
 
 補足:

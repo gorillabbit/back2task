@@ -11,6 +11,30 @@ REM --- 1. Setup Environment ---
 cd /d "%~dp0"
 set "PYTHONPATH=%cd%"
 
+REM --- Load common env from .env.local (required) ---
+if exist ".env.local" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env.local") do (
+        if not "%%A"=="" set "%%A=%%B"
+    )
+    echo [SETUP] Loaded .env.local
+) else (
+    echo [ERROR] .env.local not found at project root.
+    endlocal
+    exit /b 1
+)
+
+REM Required vars check (fail fast)
+if not defined LLM_URL (
+    echo [ERROR] LLM_URL must be set in .env.local
+    endlocal
+    exit /b 1
+)
+if not defined LLM_MODEL (
+    echo [ERROR] LLM_MODEL must be set in .env.local
+    endlocal
+    exit /b 1
+)
+
 echo [SETUP] Checking for virtual environment...
 if not exist "venv\Scripts\activate.bat" (
     echo [SETUP] Virtual environment not found. Creating...
@@ -86,15 +110,11 @@ echo [START] Event Pump started.
 
 REM --- 4. Status Check ---
 echo [STATUS] Checking for LLM server...
-REM Allow overriding LLM URL via environment variable
-if not defined LLM_URL (
-    set "LLM_URL=http://localhost:1234"
-)
 curl -s %LLM_URL%/v1/models >nul
 if %errorlevel% equ 0 (
     set "LLM_STATUS=Available (%LLM_URL%)"
 ) else (
-    set "LLM_STATUS=Not Found (AI disabled)"
+    set "LLM_STATUS=Unreachable (AI disabled)"
 )
 
 echo.

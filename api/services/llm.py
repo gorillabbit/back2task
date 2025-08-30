@@ -26,19 +26,14 @@ class NudgingPolicy:
 
 
 class LLMService:
-    """OpenAI互換APIクライアント（既定: LM Studio + Gemma 3 4B）."""
+    """OpenAI互換APIクライアント（LM Studio + Gemma 3 4B等に対応）."""
 
-    def __init__(
-        self,
-        base_url: str = "http://localhost:1234",
-        model_name: str = "google/gemma-3-4b",
-        timeout: float = 20.0,
-    ) -> None:
+    def __init__(self, base_url: str, model_name: str, timeout: float = 20.0) -> None:
         """初期化
 
         Args:
-        base_url: OpenAI互換APIのベースURL(LM Studio の場合は http://localhost:1234)
-        model_name: 使用するモデル名(既定: google/gemma-3-4b)
+        base_url: OpenAI互換APIのベースURL（例: http://127.0.0.1:1234）
+        model_name: 使用するモデル名（例: google/gemma-3-4b）
         timeout: APIタイムアウト(秒)
 
         """
@@ -46,8 +41,6 @@ class LLMService:
         self.model_name = model_name
         self.timeout = timeout
         self.chat_url = f"{self.base_url}/v1/chat/completions"
-        # Optional API key for OpenAI-compatible servers (e.g., LM Studio)
-        self.api_key = os.getenv("LLM_API_KEY") or None
 
         # システムプロンプト
         self.system_prompt = """
@@ -74,14 +67,7 @@ Focus on being helpful, not annoying.
     def is_available(self) -> bool:
         """LLMサービスが利用可能かチェック."""
         try:
-            if self.api_key:
-                response = requests.get(
-                    f"{self.base_url}/v1/models",
-                    timeout=5,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                )
-            else:
-                response = requests.get(f"{self.base_url}/v1/models", timeout=5)
+            response = requests.get(f"{self.base_url}/v1/models", timeout=5)
         except requests.RequestException:
             return False
         else:
@@ -197,8 +183,6 @@ Decide the best nudging action now.
             }
 
             headers = {"Content-Type": "application/json"}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
 
             response = requests.post(
                 self.chat_url,
@@ -258,12 +242,12 @@ def create_llm_service(
 ) -> LLMService:
     """LLMサービスのファクトリ関数.
 
-    環境変数で設定可能:
-    - LLM_URL: OpenAI互換APIのベースURL（例: http://localhost:1234）
+    環境変数で設定（必須）:
+    - LLM_URL: OpenAI互換APIのベースURL（例: http://127.0.0.1:1234）
     - LLM_MODEL: 使用するモデル名（例: google/gemma-3-4b）
-    - LLM_API_KEY: 必要に応じてBearerトークン
     """
-    # デフォルトは LM Studio の Local Server + Gemma 3 4B
-    resolved_base = os.getenv("LLM_URL") or base_url or "http://localhost:1234"
-    resolved_model = os.getenv("LLM_MODEL") or model_name or "google/gemma-3-4b"
+    resolved_base = base_url or os.getenv("LLM_URL")
+    resolved_model = model_name or os.getenv("LLM_MODEL")
+    if not resolved_base or not resolved_model:
+        raise RuntimeError("LLM_URL and LLM_MODEL must be set (e.g., in .env.local).")
     return LLMService(base_url=resolved_base, model_name=resolved_model)
