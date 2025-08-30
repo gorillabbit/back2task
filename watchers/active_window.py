@@ -32,5 +32,5 @@ def get_active_app() -> dict[str, str | None]:
 if __name__ == "__main__":  # pragma: no cover
     # テスト実行
     for _ in range(3):
-        _ = get_active_app()
+        get_active_app()
         time.sleep(1)

@@ -90,7 +90,9 @@ class NotificationService:
                 }[level]
 
                 flags = MB_OK | icon | MB_TOPMOST
-                ctypes.windll.user32.MessageBoxW(0, message, title, flags)
+                ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
+                    0, message, title, flags
+                )
                 success = True
             except Exception:
                 success = False

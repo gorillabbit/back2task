@@ -1,20 +1,17 @@
 """Event pump that aggregates watcher data and posts to the API."""
 
-import os
-
-# 各Watcherをインポート
-import sys
+import importlib
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from types import ModuleType
+from typing import Any, cast
 
-import requests
+from .active_window import get_active_app
+from .idle import get_idle_ms
+from .screen_capture import capture_screenshot_base64
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from watchers.active_window import get_active_app
-from watchers.idle import get_idle_ms
-from watchers.screen_capture import capture_screenshot_base64
+requests = cast(ModuleType, importlib.import_module("requests"))
 
 
 class EventPump:
@@ -37,7 +34,7 @@ class EventPump:
         self.running = False
 
         # 各Watcherの状態
-        self.last_window_info = {}
+        self.last_window_info: dict[str, str | None] = {}
         self.last_idle_time = 0
         self.last_screenshot = ""
         self.screenshot_enabled = True
@@ -172,7 +169,7 @@ class EventPump:
             # ステータスエンドポイントで確認
             status_url = self.api_url.replace("/events", "/status")
             response = requests.get(status_url, timeout=3)
-            return response.status_code == 200
+            return cast(int, response.status_code) == 200
 
         except Exception:
             return False

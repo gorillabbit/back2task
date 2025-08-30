@@ -3,10 +3,16 @@
 import json
 import os
 import time
+import importlib
 from dataclasses import dataclass
-from typing import Any
+from types import ModuleType
+from typing import Any, cast
 
-import requests
+requests = cast(ModuleType, importlib.import_module("requests"))
+
+HTTP_OK = 200
+IDLE_LONG_MS = 60_000
+IDLE_SHORT_MS = 5_000
 
 
 @dataclass
@@ -62,13 +68,12 @@ Focus on being helpful, not annoying.
 """.strip()
 
         # 最後のAPI呼び出し時刻（レート制限用）
-        self.last_call_time = 0
+        self.last_call_time: float = 0.0
         self.min_call_interval = 1.0  # 最小呼び出し間隔（秒）
 
     def is_available(self) -> bool:
         """LLMサービスが利用可能かチェック."""
         try:
-            # Authorization ヘッダは必要な場合のみ付与
             if self.api_key:
                 response = requests.get(
                     f"{self.base_url}/v1/models",
@@ -77,9 +82,11 @@ Focus on being helpful, not annoying.
                 )
             else:
                 response = requests.get(f"{self.base_url}/v1/models", timeout=5)
-            return response.status_code == 200
-        except Exception:
+        except requests.RequestException:
             return False
+        else:
+            status_code = cast(int, response.status_code)
+            return status_code == HTTP_OK
 
     def _rate_limit(self) -> None:
         """レート制限を適用."""
@@ -98,9 +105,12 @@ Focus on being helpful, not annoying.
         screenshot = observations.get("screenshot") or ""
 
         # アイドル時間を分かりやすい形式に変換
-        if idle_ms > 60000:
-            idle_desc = f"{idle_ms // 60000}min {(idle_ms % 60000) // 1000}sec idle"
-        elif idle_ms > 5000:
+        if idle_ms > IDLE_LONG_MS:
+            idle_desc = (
+                f"{idle_ms // IDLE_LONG_MS}min "
+                f"{(idle_ms % IDLE_LONG_MS) // 1000}sec idle"
+            )
+        elif idle_ms > IDLE_SHORT_MS:
             idle_desc = f"{idle_ms // 1000}sec idle"
         else:
             idle_desc = "active"
@@ -114,7 +124,8 @@ Current Activity:
 - Status: {idle_desc}
 - Screenshot: {"Available" if screenshot else "Not available"}
 
-Please analyze the screenshot (if available) to determine if the user is focused on their task or being distracted.
+Please analyze the screenshot (if available) to determine
+if the user is focused on their task or being distracted.
 Decide the best nudging action now.
 """.strip()
 
@@ -127,7 +138,8 @@ Decide the best nudging action now.
 
         Args:
             task: 現在のタスク名
-            observations: 観測データ（active_app, title, url, idle_ms, ocr, phone_detected等）
+            observations: 観測データ（active_app, title, url, idle_ms,
+                ocr, phone_detected等）
 
         Returns:
             NudgingPolicy: 決定されたnudging policy
@@ -150,7 +162,7 @@ Decide the best nudging action now.
             context_prompt = self._build_context_prompt(task, observations)
 
             # メッセージを構築（スクリーンショットが利用可能な場合は画像も含む）
-            messages = [
+            messages: list[dict[str, Any]] = [
                 {"role": "system", "content": self.system_prompt},
             ]
 
@@ -195,7 +207,7 @@ Decide the best nudging action now.
                 headers=headers,
             )
 
-            if response.status_code != 200:
+            if response.status_code != HTTP_OK:
                 return NudgingPolicy(
                     action="quiet",
                     reason="LLM error",
@@ -230,7 +242,7 @@ Decide the best nudging action now.
                 tip=None,
                 confidence=0.0,
             )
-        except Exception:
+        except requests.RequestException:
             return NudgingPolicy(
                 action="quiet",
                 reason="LLM exception",
