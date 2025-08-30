@@ -104,6 +104,10 @@ export LLM_URL="http://localhost:1234"
 export LLM_MODEL="google/gemma-3-4b"
 export LLM_API_KEY="lm-studio"   # 任意
 ./start.sh
+
+# LM Studio CLIからサーバーを自動起動する場合
+./start_llm.sh           # LLMのみ起動
+./start.sh --start-llm   # Back2TaskとLLMを同時起動
 ```
 
 補足:

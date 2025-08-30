@@ -9,6 +9,25 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# 引数解析
+START_LLM=false
+MONITOR=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --start-llm)
+            START_LLM=true
+            shift
+            ;;
+        --monitor)
+            MONITOR=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 echo -e "${BLUE}🎯 Back2Task 起動中...${NC}"
 echo "================================"
 
@@ -116,8 +135,20 @@ if curl -s "${LLM_URL_CHECK}/v1/models" > /dev/null 2>&1; then
     echo -e "${GREEN}   ✅ LLMサーバー利用可能${NC}"
     LLM_STATUS="利用可能 (${LLM_URL_CHECK})"
 else
-    echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません（AI 無効）${NC}"
-    LLM_STATUS="なし（AI 無効）"
+    if [[ "$START_LLM" == true ]]; then
+        echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません。起動を試みます...${NC}"
+        if ./start_llm.sh > /tmp/back2task/llm_start.log 2>&1; then
+            echo -e "${GREEN}   ✅ LLMサーバー起動完了${NC}"
+            LLM_STATUS="起動済み (${LLM_URL_CHECK})"
+        else
+            echo -e "${RED}   ❌ LLMサーバー起動失敗${NC}"
+            cat /tmp/back2task/llm_start.log
+            LLM_STATUS="起動失敗"
+        fi
+    else
+        echo -e "${YELLOW}   ⚠️  LLMサーバーが見つかりません（AI 無効）${NC}"
+        LLM_STATUS="なし（AI 無効）"
+    fi
 fi
 
 # 起動完了
@@ -141,7 +172,7 @@ echo "   • Event Pump: /tmp/back2task/pump.log"
 echo ""
 
 # 状態監視ループ（オプション）
-if [[ "$1" == "--monitor" ]]; then
+if [[ "$MONITOR" == true ]]; then
     echo -e "${YELLOW}📊 リアルタイム監視モード (Ctrl+C で終了)${NC}"
     echo ""
     
