@@ -147,11 +147,13 @@ def notify(
     title: str,
     message: str,
     level: NotificationLevel = NotificationLevel.INFO,
-    **kwargs,
+    *,
+    sound: bool | None = None,
+    flash: bool | None = None,
 ) -> bool:
     """Convenience wrapper around :meth:`NotificationService.notify`."""
     service = get_notification_service()
-    return service.notify(title, message, level, **kwargs)
+    return service.notify(title, message, level, sound=sound, flash=flash)
 
 
 def notify_gentle_nudge(message: str) -> bool:

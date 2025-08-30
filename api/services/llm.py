@@ -6,9 +6,9 @@ import time
 import importlib
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Any, cast
+from typing import Any
 
-requests = cast(ModuleType, importlib.import_module("requests"))
+requests: ModuleType = importlib.import_module("requests")
 
 HTTP_OK = 200
 IDLE_LONG_MS = 60_000
@@ -85,7 +85,7 @@ Focus on being helpful, not annoying.
         except requests.RequestException:
             return False
         else:
-            status_code = cast(int, response.status_code)
+            status_code: int = response.status_code
             return status_code == HTTP_OK
 
     def _rate_limit(self) -> None:

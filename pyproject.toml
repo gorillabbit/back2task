@@ -93,4 +93,5 @@ explicit_package_bases = true
 
 [tool.pyright]
 pythonVersion = "3.11"
+typeCheckingMode = "strict"
 reportMissingModuleSource = "none"
