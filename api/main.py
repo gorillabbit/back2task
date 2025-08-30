@@ -1,9 +1,10 @@
+from collections import deque
+from dataclasses import asdict
+from typing import Any
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
-from typing import Optional, Dict, Any
-from dataclasses import asdict
-from collections import deque
 
 # LLMサービスをインポート
 from api.services.llm import LLMService, NudgingPolicy, create_llm_service
@@ -15,7 +16,7 @@ app = FastAPI(
 )
 
 # グローバルな状態管理
-STATE: Dict[str, Any] = {
+STATE: dict[str, Any] = {
     "focus_target": "一般的な作業",
     "productive": True,
     "last_nudge": None,
@@ -27,9 +28,8 @@ STATE: Dict[str, Any] = {
 # --- ロギング ---
 
 
-def log_message(message: str):
-    """コンソールに出力し、ログキューにも追加する"""
-    print(message)
+def log_message(message: str) -> None:
+    """コンソールに出力し、ログキューにも追加する."""
     STATE["logs"].append(message)
 
 
@@ -37,7 +37,7 @@ def log_message(message: str):
 
 
 class FocusUpdate(BaseModel):
-    """フォーカスターゲット更新リクエストのモデル"""
+    """フォーカスターゲット更新リクエストのモデル."""
 
     target: str
 
@@ -45,29 +45,30 @@ class FocusUpdate(BaseModel):
     @classmethod
     def target_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("target must not be empty")
+            msg = "target must not be empty"
+            raise ValueError(msg)
         return v
 
 
 class Event(BaseModel):
-    """監視イベントのデータモデル"""
+    """監視イベントのデータモデル."""
 
-    active_app: Optional[str] = None
-    title: Optional[str] = ""
-    url: Optional[str] = ""
-    idle_ms: Optional[int] = 0
-    ocr: Optional[str] = ""
-    phone: Optional[str] = ""
-    phone_detected: Optional[bool] = False
-    screenshot: Optional[str] = None  # base64エンコードされたスクリーンショット
+    active_app: str | None = None
+    title: str | None = ""
+    url: str | None = ""
+    idle_ms: int | None = 0
+    ocr: str | None = ""
+    phone: str | None = ""
+    phone_detected: bool | None = False
+    screenshot: str | None = None  # base64エンコードされたスクリーンショット
 
 
 # --- アプリケーションのライフサイクルイベント ---
 
 
 @app.on_event("startup")
-async def startup_event():
-    """アプリケーション起動時にLLMサービスを初期化"""
+async def startup_event() -> None:
+    """アプリケーション起動時にLLMサービスを初期化."""
     STATE["llm_service"] = create_llm_service()
     is_ready = STATE["llm_service"].is_available()
     log_message(f"LLM Service Available: {is_ready}")
@@ -78,7 +79,7 @@ async def startup_event():
 
 @app.post("/focus/update")
 async def update_focus_target(req: FocusUpdate):
-    """ユーザーのフォーカスターゲット（集中したい作業内容）を更新する"""
+    """ユーザーのフォーカスターゲット（集中したい作業内容）を更新する."""
     STATE["focus_target"] = req.target
     log_message(f"Focus target updated to: {req.target}")
     return {"ok": True, "focus_target": req.target}
@@ -86,14 +87,16 @@ async def update_focus_target(req: FocusUpdate):
 
 @app.post("/events")
 async def ingest_event(event: Event):
-    """監視イベントを取り込み、AIで生産性を判定する"""
+    """監視イベントを取り込み、AIで生産性を判定する."""
     llm_service: LLMService = STATE["llm_service"]
     if not llm_service:
         raise HTTPException(status_code=503, detail="LLM Service not available")
 
     # AIによる生産性評価
     is_productive, policy = _evaluate_productivity_by_ai(
-        event, llm_service, STATE["focus_target"]
+        event,
+        llm_service,
+        STATE["focus_target"],
     )
 
     # 状態を更新
@@ -102,7 +105,7 @@ async def ingest_event(event: Event):
     STATE["last_event"] = event.model_dump()
 
     log_message(
-        f"Event processed. Productive: {is_productive}. Nudge action: {policy.action if policy else 'N/A'}"
+        f"Event processed. Productive: {is_productive}. Nudge action: {policy.action if policy else 'N/A'}",
     )
 
     return {"ok": True, "productive": is_productive, "policy": STATE["last_nudge"]}
@@ -110,11 +113,10 @@ async def ingest_event(event: Event):
 
 @app.get("/status")
 async def get_current_status():
-    """現在のシステム状態を取得する"""
-    status_info = {
+    """現在のシステム状態を取得する."""
+    return {
         k: v for k, v in STATE.items() if k not in ["llm_service", "logs", "last_event"]
     }
-    return status_info
 
 
 # --- モニタリング用エンドポイント ---
@@ -122,7 +124,7 @@ async def get_current_status():
 
 @app.get("/api/monitoring_data")
 async def get_monitoring_data():
-    """モニタリングUIに最新データを提供する"""
+    """モニタリングUIに最新データを提供する."""
     return {
         "last_event": STATE["last_event"],
         "last_nudge": STATE["last_nudge"],
@@ -134,7 +136,7 @@ async def get_monitoring_data():
 
 @app.get("/monitoring", response_class=HTMLResponse)
 async def get_monitoring_page():
-    """モニタリング用のWebページを返す"""
+    """モニタリング用のWebページを返す."""
     html_content = """
     <!DOCTYPE html>
     <html lang="ja">
@@ -223,10 +225,11 @@ async def get_monitoring_page():
 
 
 def _evaluate_productivity_by_ai(
-    event: Event, llm: LLMService, task: str
-) -> tuple[bool, Optional[NudgingPolicy]]:
-    """
-    LLMを使用してイベントから生産性を判定する。
+    event: Event,
+    llm: LLMService,
+    task: str,
+) -> tuple[bool, NudgingPolicy | None]:
+    """LLMを使用してイベントから生産性を判定する。.
 
     Args:
         event: 監視イベントデータ
@@ -235,6 +238,7 @@ def _evaluate_productivity_by_ai(
 
     Returns:
         (bool, NudgingPolicy): (生産的かどうか, LLMの判断ポリシー)
+
     """
     observations = event.model_dump()
 

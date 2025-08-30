@@ -10,12 +10,14 @@ from ui.notifications import (
     get_notification_service,
 )
 
-def test_get_notification_service_singleton():
+
+def test_get_notification_service_singleton() -> None:
     first = get_notification_service()
     second = get_notification_service()
     assert first is second
 
-def test_notify_non_windows():
+
+def test_notify_non_windows() -> None:
     service = NotificationService()
     if platform.system() != "Windows":
         assert service.notify("title", "message", NotificationLevel.INFO) is False

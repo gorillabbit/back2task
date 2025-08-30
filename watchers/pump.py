@@ -1,11 +1,13 @@
-import time
-import requests
-from typing import Any, Dict, Optional, Callable
-from concurrent.futures import ThreadPoolExecutor
+import os
 
 # 各Watcherをインポート
 import sys
-import os
+import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
+
+import requests
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,15 +17,17 @@ from watchers.screen_capture import capture_screenshot_base64
 
 
 class EventPump:
-    """各Watcherからデータを収集してAPIに送信するクラス"""
+    """各Watcherからデータを収集してAPIに送信するクラス."""
 
     def __init__(
-        self, api_url: str = "http://localhost:5577/events", interval: float = 2.0
-    ):
-        """
-        Args:
-            api_url: イベント送信先のAPIエンドポイント
-            interval: データ収集間隔（秒）
+        self,
+        api_url: str = "http://localhost:5577/events",
+        interval: float = 2.0,
+    ) -> None:
+        """Args:
+        api_url: イベント送信先のAPIエンドポイント
+        interval: データ収集間隔（秒）.
+
         """
         self.api_url = api_url
         self.interval = interval
@@ -48,55 +52,49 @@ class EventPump:
         }
 
     def initialize_screenshot(self) -> bool:
-        """
-        スクリーンキャプチャ機能を初期化
+        """スクリーンキャプチャ機能を初期化.
 
         Returns:
             bool: 初期化成功時True
+
         """
         try:
             # テストキャプチャを実行
             test_screenshot = capture_screenshot_base64()
             if test_screenshot:
                 self.screenshot_enabled = True
-                print("スクリーンキャプチャ機能を初期化しました")
                 return True
-            else:
-                print("スクリーンキャプチャの初期化に失敗しました")
-                return False
-
-        except Exception as e:
-            print(f"スクリーンキャプチャ初期化エラー: {e}")
             return False
 
-    def collect_window_data(self) -> Dict[str, str | None]:
-        """前面ウィンドウ情報を収集"""
+        except Exception:
+            return False
+
+    def collect_window_data(self) -> dict[str, str | None]:
+        """前面ウィンドウ情報を収集."""
         try:
             window_info = get_active_app()
             self.last_window_info = window_info
             self.error_counts["window"] = 0  # エラーカウントリセット
             return window_info
 
-        except Exception as e:
+        except Exception:
             self.error_counts["window"] += 1
-            print(f"ウィンドウ情報収集エラー: {e}")
             return self.last_window_info or {"active_app": None, "title": None}
 
     def collect_idle_data(self) -> int:
-        """アイドル時間情報を収集"""
+        """アイドル時間情報を収集."""
         try:
             idle_time = get_idle_ms()
             self.last_idle_time = idle_time
             self.error_counts["idle"] = 0
             return idle_time
 
-        except Exception as e:
+        except Exception:
             self.error_counts["idle"] += 1
-            print(f"アイドル時間収集エラー: {e}")
             return self.last_idle_time
 
     def collect_screenshot_data(self) -> str:
-        """スクリーンショット情報を収集"""
+        """スクリーンショット情報を収集."""
         try:
             # エラーが多い場合はスキップ
             if self.error_counts["screenshot"] >= self.max_errors:
@@ -107,16 +105,14 @@ class EventPump:
                 self.last_screenshot = screenshot_b64
                 self.error_counts["screenshot"] = 0
                 return screenshot_b64
-            else:
-                return self.last_screenshot
-
-        except Exception as e:
-            self.error_counts["screenshot"] += 1
-            print(f"スクリーンショット収集エラー: {e}")
             return self.last_screenshot
 
-    def collect_all_data(self) -> Dict[str, Any]:
-        """全てのWatcherからデータを収集"""
+        except Exception:
+            self.error_counts["screenshot"] += 1
+            return self.last_screenshot
+
+    def collect_all_data(self) -> dict[str, Any]:
+        """全てのWatcherからデータを収集."""
         # 並行してデータ収集
         with ThreadPoolExecutor(max_workers=3) as executor:
             # 各Watcherのタスクを投入
@@ -139,15 +135,15 @@ class EventPump:
             "screenshot": screenshot_data if screenshot_data else "",
         }
 
-    def send_event(self, event_data: Dict[str, Any]) -> bool:
-        """
-        イベントデータをAPIに送信
+    def send_event(self, event_data: dict[str, Any]) -> bool:
+        """イベントデータをAPIに送信.
 
         Args:
             event_data: 送信するイベントデータ
 
         Returns:
             bool: 送信成功時True
+
         """
         try:
             response = requests.post(self.api_url, json=event_data, timeout=5)
@@ -157,22 +153,18 @@ class EventPump:
                 self.stats["events_sent"] += 1
                 self.stats["last_event_time"] = time.time()
                 return True
-            else:
-                print(f"API送信エラー: HTTP {response.status_code}")
-                self.error_counts["api"] += 1
-                return False
-
-        except requests.exceptions.RequestException as e:
             self.error_counts["api"] += 1
-            print(f"API送信エラー: {e}")
             return False
-        except Exception as e:
+
+        except requests.exceptions.RequestException:
             self.error_counts["api"] += 1
-            print(f"予期しない送信エラー: {e}")
+            return False
+        except Exception:
+            self.error_counts["api"] += 1
             return False
 
     def check_api_availability(self) -> bool:
-        """APIの可用性をチェック"""
+        """APIの可用性をチェック."""
         try:
             # ステータスエンドポイントで確認
             status_url = self.api_url.replace("/events", "/status")
@@ -183,11 +175,11 @@ class EventPump:
             return False
 
     def run_once(self) -> bool:
-        """
-        1回のデータ収集・送信サイクルを実行
+        """1回のデータ収集・送信サイクルを実行.
 
         Returns:
             bool: 成功時True
+
         """
         try:
             # データ収集
@@ -197,35 +189,29 @@ class EventPump:
             success = self.send_event(event_data)
 
             if success:
-                print(
-                    f"イベント送信成功: {event_data['active_app']} (アイドル: {event_data['idle_ms']}ms)"
-                )
+                pass
             else:
                 self.stats["errors_total"] += 1
 
             return success
 
-        except Exception as e:
-            print(f"データ収集・送信エラー: {e}")
+        except Exception:
             self.stats["errors_total"] += 1
             return False
 
-    def run_continuous(self, callback: Optional[Callable] = None):
-        """
-        連続的なデータ収集・送信を実行
+    def run_continuous(self, callback: Callable | None = None) -> None:
+        """連続的なデータ収集・送信を実行.
 
         Args:
             callback: 各サイクル後に呼ばれるコールバック関数
+
         """
         self.running = True
         self.stats["start_time"] = time.time()
 
-        print(f"イベントポンプを開始 (間隔: {self.interval}秒)")
-        print(f"API エンドポイント: {self.api_url}")
-
         # API可用性チェック
         if not self.check_api_availability():
-            print("警告: APIが利用できません。送信は失敗する可能性があります。")
+            pass
 
         try:
             while self.running:
@@ -241,7 +227,6 @@ class EventPump:
                 # エラーが多すぎる場合は一時停止
                 total_errors = sum(self.error_counts.values())
                 if total_errors > self.max_errors * 3:
-                    print("エラーが多すぎます。30秒間一時停止します...")
                     time.sleep(30)
                     # エラーカウントをリセット
                     for key in self.error_counts:
@@ -253,14 +238,12 @@ class EventPump:
                 time.sleep(sleep_time)
 
         except KeyboardInterrupt:
-            print("\nイベントポンプを停止します...")
             self.stop()
-        except Exception as e:
-            print(f"予期しないエラー: {e}")
+        except Exception:
             self.stop()
 
-    def stop(self):
-        """イベントポンプを停止"""
+    def stop(self) -> None:
+        """イベントポンプを停止."""
         self.running = False
 
         # リソースクリーンアップ
@@ -269,17 +252,11 @@ class EventPump:
         # 統計情報表示
         if self.stats["start_time"]:
             runtime = time.time() - self.stats["start_time"]
-            print("\n統計情報:")
-            print(f"実行時間: {runtime:.1f}秒")
-            print(f"送信イベント数: {self.stats['events_sent']}")
-            print(f"エラー総数: {self.stats['errors_total']}")
             if runtime > 0:
-                print(
-                    f"送信レート: {self.stats['events_sent'] / runtime * 60:.1f} イベント/分"
-                )
+                pass
 
-    def get_status(self) -> Dict[str, Any]:
-        """現在の状態を取得"""
+    def get_status(self) -> dict[str, Any]:
+        """現在の状態を取得."""
         return {
             "running": self.running,
             "api_url": self.api_url,
@@ -290,16 +267,21 @@ class EventPump:
         }
 
 
-def main():
-    """メイン関数"""
+def main() -> None:
+    """メイン関数."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Back2Task Event Pump")
     parser.add_argument(
-        "--api-url", default="http://localhost:5577/events", help="APIエンドポイントURL"
+        "--api-url",
+        default="http://localhost:5577/events",
+        help="APIエンドポイントURL",
     )
     parser.add_argument(
-        "--interval", type=float, default=2.0, help="データ収集間隔（秒）"
+        "--interval",
+        type=float,
+        default=2.0,
+        help="データ収集間隔（秒）",
     )
     parser.add_argument(
         "--disable-screenshot",
@@ -320,21 +302,17 @@ def main():
     try:
         if args.test_once:
             # テスト実行
-            print("テスト実行中...")
-            success = pump.run_once()
-            print(f"結果: {'成功' if success else '失敗'}")
+            pump.run_once()
         else:
             # 連続実行
-            def status_callback(success, stats):
+            def status_callback(success, stats) -> None:
                 if stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0:
-                    print(
-                        f"送信済みイベント: {stats['events_sent']}, エラー: {stats['errors_total']}"
-                    )
+                    pass
 
             pump.run_continuous(callback=status_callback)
 
-    except Exception as e:
-        print(f"実行エラー: {e}")
+    except Exception:
+        pass
     finally:
         pump.stop()
 

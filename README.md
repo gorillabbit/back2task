@@ -109,7 +109,6 @@ export LLM_API_KEY="lm-studio"   # 任意
 補足:
 
 -   ストリーミングは未使用、画像リサイズは行いません。Event Pump が取得したスクリーンショットを base64 の data URL として直接送信します。
--   ルールベースの判定は廃止しました。LLM が利用できない・エラー時は `action: "quiet"`（reason にエラー種別）を返すだけで、挙動は最小限に抑えます。
 
 ## 使用方法
 
@@ -167,11 +166,11 @@ python watchers/pump.py
 
 ### LLM サービス（内部利用）
 
-- 内部で LM Studio の OpenAI 互換エンドポイント（`/v1/chat/completions`）に接続します。
+-   内部で LM Studio の OpenAI 互換エンドポイント（`/v1/chat/completions`）に接続します。
 
 ## 設定
 
-### 通知（Windows最小）
+### 通知（Windows 最小）
 
 ```python
 from ui.notifications import NotificationService, NotificationLevel
@@ -179,7 +178,8 @@ from ui.notifications import NotificationService, NotificationLevel
 notifier = NotificationService()
 notifier.notify("Back2Task", "作業を続けましょう", level=NotificationLevel.INFO)
 ```
-備考: Windows のみで動作（メッセージボックス表示）。他OSでは無効です。
+
+備考: Windows のみで動作（メッセージボックス表示）。他 OS では無効です。
 
 ### LLM 設定
 
@@ -230,15 +230,12 @@ python test_integration.py
 
 ## 静的解析
 
-Rust 製の `red_knot` を利用してコードの静的解析を行います。バイナリ配布がないため、ソースからビルドしてください。
-
 ```bash
-cargo install red_knot --git https://github.com/astral-sh/ruff.git
-# 必要に応じて cargo の bin ディレクトリを PATH に追加
-export PATH="$HOME/.cargo/bin:$PATH"
-red_knot check
+pip install ruff mypy
+pip install -e .[dev]
+ruff check .
 # 特定のファイルを解析
-red_knot check foo.py
+mypy .
 ```
 
 設定は `pyproject.toml` の `[tool.knot]` セクションでカスタマイズできます。
@@ -295,4 +292,3 @@ systemctl --user status notification-daemon
 # Windows: PowerShell権限確認
 Get-ExecutionPolicy
 ```
-

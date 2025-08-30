@@ -20,4 +20,3 @@ if str(ROOT) not in sys.path:
 # services and Windows-specific dependencies.  It is ignored so that the unit
 # test suite can run in this execution environment.
 collect_ignore = ["test_integration.py"]
-
