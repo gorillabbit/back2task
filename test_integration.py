@@ -8,14 +8,14 @@ import sys
 import time
 import importlib
 from types import ModuleType
-from typing import Any, cast
+from typing import Any
 
 # 各コンポーネントをインポート
 from api.services.llm import LLMService
 from ui.notifications import NotificationLevel, NotificationService
 from watchers.pump import EventPump
 
-requests = cast(ModuleType, importlib.import_module("requests"))
+requests: ModuleType = importlib.import_module("requests")
 
 
 class Back2TaskIntegrationTest:
@@ -31,7 +31,7 @@ class Back2TaskIntegrationTest:
         """API可用性テスト."""
         try:
             response = requests.get(f"{self.api_url}/status", timeout=5)
-            status_code = cast(int, response.status_code)
+            status_code: int = response.status_code
             return status_code == 200
         except Exception:
             return False
@@ -40,7 +40,7 @@ class Back2TaskIntegrationTest:
         """LLM可用性テスト"""
         try:
             response = requests.get(f"{self.llm_url}/v1/models", timeout=5)
-            status_code = cast(int, response.status_code)
+            status_code: int = response.status_code
             if status_code == 200:
                 response.json()
                 return True
@@ -357,7 +357,7 @@ class Back2TaskIntegrationTest:
             ("エンドツーエンドシナリオ", self.test_end_to_end_scenario),
         ]
 
-        results = {}
+        results: dict[str, bool] = {}
 
         for test_name, test_func in tests:
             try:

@@ -37,6 +37,7 @@ dev = [
     "mypy>=1.11.1",
     "black>=24.3.0",
     "isort>=5.13.2",
+    "pyright>=1.1.403",
 ]
 
 [tool.pytest.ini_options]
@@ -89,3 +90,8 @@ warn_return_any = true
 warn_unused_ignores = true
 ignore_missing_imports = true
 explicit_package_bases = true
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingModuleSource = "none"

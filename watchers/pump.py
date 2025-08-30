@@ -5,13 +5,13 @@ import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
-from typing import Any, cast
+from typing import Any
 
 from .active_window import get_active_app
 from .idle import get_idle_ms
 from .screen_capture import capture_screenshot_base64
 
-requests = cast(ModuleType, importlib.import_module("requests"))
+requests: ModuleType = importlib.import_module("requests")
 
 
 class EventPump:
@@ -169,7 +169,8 @@ class EventPump:
             # ステータスエンドポイントで確認
             status_url = self.api_url.replace("/events", "/status")
             response = requests.get(status_url, timeout=3)
-            return cast(int, response.status_code) == 200
+            status_code: int = response.status_code
+            return status_code == 200
 
         except Exception:
             return False
@@ -199,7 +200,9 @@ class EventPump:
             self.stats["errors_total"] += 1
             return False
 
-    def run_continuous(self, callback: Callable | None = None) -> None:
+    def run_continuous(
+        self, callback: Callable[[bool, dict[str, Any]], None] | None = None
+    ) -> None:
         """連続的なデータ収集・送信を実行.
 
         Args:
@@ -305,7 +308,7 @@ def main() -> None:
             pump.run_once()
         else:
             # 連続実行
-            def status_callback(success, stats) -> None:
+            def status_callback(success: bool, stats: dict[str, Any]) -> None:
                 if stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0:
                     pass
 

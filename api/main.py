@@ -69,7 +69,8 @@ class Event(BaseModel):
 # --- アプリケーションのライフサイクルイベント ---
 
 
-@app.on_event("startup")
+# Deprecated on_event usage is temporarily retained for simplicity.
+@app.on_event("startup")  # pyright: ignore[reportDeprecated]
 async def startup_event() -> None:
     """アプリケーション起動時にLLMサービスを初期化."""
     STATE["llm_service"] = create_llm_service()

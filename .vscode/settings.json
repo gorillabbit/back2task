@@ -1,5 +1,7 @@
 {
     "cSpell.words": [
         "LASTINPUTINFO"
-    ]
+    ],
+    "python.languageServer": "Pylance",
+    "python.analysis.typeCheckingMode": "strict"
 }
