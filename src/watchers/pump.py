@@ -7,9 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from typing import Any
 
-from watchers.active_window import get_active_app
-from watchers.idle import get_idle_ms
-from watchers.screen_capture import ScreenCapture
+from src.watchers.active_window import get_active_app
+from src.watchers.idle import get_idle_ms
+from src.watchers.screen_capture import ScreenCapture
 
 requests: ModuleType = importlib.import_module("requests")
 

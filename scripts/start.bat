@@ -39,21 +39,20 @@ if not defined LLM_MODEL (
     exit /b 1
 )
 
-echo [SETUP] Checking for virtual environment...
-if not exist "venv\Scripts\activate.bat" (
-    echo [SETUP] Virtual environment not found. Creating...
-    python -m venv venv
-) else (
-    echo [SETUP] Virtual environment found.
+rem Ensure uv exists
+where uv >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] uv not found. Please install from https://docs.astral.sh/uv/
+    echo        "e.g. (PowerShell):  irm https://astral.sh/uv/install.ps1 | iex"
+    popd >nul
+    endlocal
+    exit /b 1
 )
 
-echo [SETUP] Activating virtual environment...
-call venv\Scripts\activate.bat
-
-echo [SETUP] Installing/Verifying dependencies...
-pip install -r requirements.txt
+echo [SETUP] Syncing dependencies with uv (including dev)...
+uv sync --dev
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install dependencies from requirements.txt.
+    echo [ERROR] uv sync failed.
     popd >nul
     endlocal
     exit /b 1
@@ -96,7 +95,7 @@ if not exist "log" (
 )
 
 REM Use PowerShell to start process, redirect logs, and capture PID
-powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $apiOut = Join-Path $logDir 'api.log'; $apiErr = Join-Path $logDir 'api.err.log'; $proc = Start-Process python -ArgumentList '-m','uvicorn','api.main:app','--reload','--port','5577','--host','127.0.0.1' -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr -PassThru; $proc.Id | Out-File -FilePath 'api_server.pid' -Encoding ascii"
+powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $apiOut = Join-Path $logDir 'api.log'; $apiErr = Join-Path $logDir 'api.err.log'; $proc = Start-Process uv -ArgumentList 'run','uvicorn','api.main:app','--reload','--port','5577','--host','127.0.0.1' -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr -PassThru; $proc.Id | Out-File -FilePath 'api_server.pid' -Encoding ascii"
 
 echo [START] Waiting for server to respond...
 :wait_for_server
@@ -112,7 +111,7 @@ echo [START] FastAPI server started successfully.
 echo [START] Starting Event Pump...
 
 REM Use PowerShell to start pump, redirect logs, and capture PID
-powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process python -ArgumentList 'watchers/pump.py','--api-url','http://127.0.0.1:5577/events','--interval','3.0' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
+powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process uv -ArgumentList 'run','python','src/watchers/pump.py','--api-url','http://127.0.0.1:5577/events','--interval','3.0' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
 
 REM A simple sleep to assume the pump starts.
 timeout /t 3 /nobreak >nul

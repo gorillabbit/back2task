@@ -1,14 +1,11 @@
 """LLM integration via OpenAI-compatible API (e.g., LM Studio)."""
 
+import requests
 import json
 import os
 import time
-import importlib
 from dataclasses import dataclass
-from types import ModuleType
 from typing import Any
-
-requests: ModuleType = importlib.import_module("requests")
 
 HTTP_OK = 200
 IDLE_LONG_MS = 60_000

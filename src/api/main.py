@@ -6,12 +6,11 @@ import tempfile
 from dataclasses import asdict
 from typing import Any
 
+from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
 
-# LLMサービスをインポート
-from api.services.llm import LLMService, NudgingPolicy, create_llm_service
 
 # FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(

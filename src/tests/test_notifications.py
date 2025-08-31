@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from ui.notifications import (
+from src.ui.notifications import (
     NotificationLevel,
     NotificationService,
     get_notification_service,

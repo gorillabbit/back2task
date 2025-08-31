@@ -1,6 +1,6 @@
 # Back2Task
 
-**完全ローカル動作の生産性監視システム（LM Studio + Gemma 3 4B 対応）**
+**完全ローカル動作の生産性監視システム**
 
 PC 画面・Web カメラ・スマホ画面の状況から「脱線していないか」を判定し、脱線時は即リマインド。指定時間の作業継続でタスク自動完了。
 
@@ -46,21 +46,6 @@ PC 画面・Web カメラ・スマホ画面の状況から「脱線していな�
 └────────────────────────────────────────────────────────────┘
 ```
 
-## 必要な環境
-
-### 最小要件
-
--   **OS**: Windows 10/11, Ubuntu 20.04+, macOS 11+
--   **Python**: 3.11+
--   **RAM**: 8GB 以上
--   **ストレージ**: 2GB 以上
-
-### LLM 推論用（推奨）
-
--   **GPU**: VRAM 16GB 以上（RTX 4090, A4000 等）
--   **RAM**: 16GB 以上
--   **Note**: GPU 無しでも CPU 推論可能（大幅に低速）
-
 ## インストール・セットアップ
 
 ### 1. プロジェクトクローン
@@ -70,26 +55,24 @@ git clone <repository-url>
 cd back2task
 ```
 
-### 2. Python 環境セットアップ
+### 2. Python 環境セットアップ（uv）
 
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+```
+# uv をインストール（未導入の場合）
+# Windows (PowerShell):  irm https://astral.sh/uv/install.ps1 | iex
+# macOS/Linux:         curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Linux/macOS
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# 依存関係を同期（開発ツール含む）
+uv sync --dev
+
+# 実行例
+uv run uvicorn api.main:app --reload --port 5577 --host 127.0.0.1
+uv run python watchers/pump.py --api-url http://127.0.0.1:5577/events --interval 3.0
 ```
 
 ### 3.x LM Studio を使う（Gemma 3 4B, 画像入力対応）
 
 LM Studio の Local Server は OpenAI 互換 API を提供します。本プロジェクトはそのまま接続できます。
-各スクリプトが `.env.local` を読み込み、その中にある値が使われます
-
-./start.sh
 
 ````
 
@@ -105,31 +88,28 @@ lms load google/gemma-3-4b
 lms server start
 
 # Back2Task 起動（.env.local を利用）
-./start.sh
+./scripts/start.sh
 
 # 停止
 lms server stop
 ````
 
-スクリプト化したコマンドも用意しています:
-
--   Windows: `scripts\lms_start_gemma.bat` / `scripts\lms_stop_gemma.bat`
--   macOS/Linux: `scripts/lms_start_gemma.sh` / `scripts/lms_stop_gemma.sh`
-
-使い方の例（.env.local を利用）:
+スクリプトも用意しています。
 
 ```bash
 # Windows (cmd)
 scripts\lms_start_gemma.bat
-start.bat
+scripts\start.bat
 
 # macOS/Linux (bash)
 bash scripts/lms_start_gemma.sh
-./start.sh
+./scripts/start.sh
 
 # 停止（共通）
 scripts\lms_stop_gemma.bat    # Windows
 bash scripts/lms_stop_gemma.sh # macOS/Linux
+
+./scripts/stop.sh           # 停止
 ```
 
 補足:
@@ -137,15 +117,6 @@ bash scripts/lms_stop_gemma.sh # macOS/Linux
 -   ストリーミングは未使用、画像リサイズは行いません。Event Pump が取得したスクリーンショットを base64 の data URL として直接送信します。
 
 ## 使用方法
-
-### 🚀 ワンコマンド起動（推奨）
-
-```bash
-cd back2task
-./start.sh          # Back2Task全体を起動
-./stop.sh           # 停止
-./quick-start.sh    # 起動 + デモタスク自動開始
-```
 
 ### 📊 基本操作
 
@@ -167,16 +138,15 @@ tail -f /tmp/back2task/\*.log
 ````
 
 ### 🔧 手動起動（開発用）
-```bash
-# 1. APIサーバー起動
-cd back2task
-source venv/bin/activate  # Windows: venv\Scripts\activate
-uvicorn api.main:app --reload --port 5577
+```
+# 1. 依存同期（初回/変更時）
+uv sync --dev
 
-# 2. Event Pump（監視プロセス）起動（別ターミナル）
-cd back2task
-source venv/bin/activate
-python watchers/pump.py
+# 2. APIサーバー起動
+uv run uvicorn api.main:app --reload --port 5577 --host 127.0.0.1
+
+# 3. Event Pump（監視プロセス）起動（別ターミナル）
+uv run python watchers/pump.py --api-url http://127.0.0.1:5577/events --interval 2.0
 ````
 
 ## API エンドポイント
@@ -206,18 +176,6 @@ notifier.notify("Back2Task", "作業を続けましょう", level=NotificationLe
 ```
 
 備考: Windows のみで動作（メッセージボックス表示）。他 OS では無効です。
-
-### LLM 設定
-
-```python
-from api.services.llm import LLMService
-
-llm = LLMService(
-    base_url=os.getenv("LLM_URL", "http://localhost:1234"),
-    model_name=os.getenv("LLM_MODEL", "google/gemma-3-4b"),
-    timeout=20.0
-)
-```
 
 ## テスト
 
@@ -257,14 +215,10 @@ python test_integration.py
 ## 静的解析
 
 ```bash
-pip install ruff mypy
-pip install -e .[dev]
 ruff check .
 # 特定のファイルを解析
 mypy .
 ```
-
-設定は `pyproject.toml` の `[tool.knot]` セクションでカスタマイズできます。
 
 ## 監視される内容
 

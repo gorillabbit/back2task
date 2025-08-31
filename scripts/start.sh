@@ -35,18 +35,17 @@ if [[ -z "${LLM_URL:-}" || -z "${LLM_MODEL:-}" ]]; then
     exit 1
 fi
 
-# 仮想環境確認
-if [[ ! -d "venv" ]]; then
-    echo -e "${YELLOW}⚠️  仮想環境が見つかりません。セットアップを実行中...${NC}"
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-else
-    echo -e "${GREEN}✅ 仮想環境が見つかりました${NC}"
+# uv がインストールされているか確認
+if ! command -v uv >/dev/null 2>&1; then
+    echo -e "${RED}❌ uv が見つかりません。インストールしてください: https://docs.astral.sh/uv/ ${NC}"
+    echo -e "    例) curl -LsSf https://astral.sh/uv/install.sh | sh"
+    exit 1
 fi
 
-# 仮想環境をアクティベート
-source venv/bin/activate
+# 依存を同期（.venv を自動作成）
+echo -e "${BLUE}📦 依存関係を同期中 (uv sync --dev)...${NC}"
+uv sync --dev
+echo -e "${GREEN}✅ 依存関係の同期完了${NC}"
 
 # PYTHONPATH設定（プロジェクトルート）
 export PYTHONPATH="$REPO_ROOT"
@@ -89,7 +88,7 @@ echo -e "${GREEN}✅ クリーンアップ完了${NC}"
 
 # 1. FastAPI サーバー起動
 echo -e "${BLUE}🚀 FastAPI サーバー起動中...${NC}"
-nohup uvicorn api.main:app --reload --port 5577 --host 127.0.0.1 \
+nohup uv run uvicorn api.main:app --reload --port 5577 --host 127.0.0.1 \
     > /tmp/back2task/api.log 2>&1 & 
 API_PID=$!
 echo "$API_PID" > /tmp/back2task/api.pid
@@ -113,7 +112,7 @@ fi
 
 # 2. Event Pump 起動
 echo -e "${BLUE}👀 Event Pump (監視システム) 起動中...${NC}"
-nohup python watchers/pump.py --api-url http://127.0.0.1:5577/events --interval 3.0 \
+nohup uv run python src/watchers/pump.py --api-url http://127.0.0.1:5577/events --interval 3.0 \
     > /tmp/back2task/pump.log 2>&1 &
 PUMP_PID=$!
 echo "$PUMP_PID" > /tmp/back2task/pump.pid
