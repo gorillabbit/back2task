@@ -1,7 +1,6 @@
-from typing import Any
-
 import requests
 
+from src.model.models import EventModel
 from src.watchers.active_window import get_active_app
 from src.watchers.idle import get_idle_ms
 from src.watchers.logger import logger
@@ -11,7 +10,7 @@ from src.watchers.screen_capture import ScreenCapture
 HTTP_OK = 200
 
 
-def collect_all_data() -> dict[str, Any]:
+def collect_all_data() -> EventModel:
     """全てのWatcherからデータを収集."""
     window_data = get_active_app()
     screenshot_data = ScreenCapture().capture_as_base64()
@@ -23,10 +22,13 @@ def collect_all_data() -> dict[str, Any]:
         "url": "",  # 将来的にブラウザURL取得を追加
         "idle_ms": get_idle_ms(),
         "screenshot": screenshot_data if screenshot_data else "",
+        "ocr": None,
+        "phone": None,
+        "phone_detected": None,
     }
 
 
-def send_event(event_data: dict[str, Any]) -> dict[str, Any] | None:
+def send_event(event_data: EventModel) -> EventModel | None:
     """イベントデータをAPIに送信
 
     Args:
@@ -43,8 +45,9 @@ def send_event(event_data: dict[str, Any]) -> dict[str, Any] | None:
     status_code = int(getattr(response, "status_code", 0))
     ok = status_code == HTTP_OK
     logger.info(ok)
+    response_json: EventModel = response.json()
     if ok:
-        return response.json()
+        return response_json
     return None
 
 

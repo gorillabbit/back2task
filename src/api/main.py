@@ -1,5 +1,4 @@
 from collections import deque
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
 
 from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
+from src.model.models import EventModel, IngestEventModel
 from src.ui.notifications import NotificationService
 
 # FastAPIアプリケーションのインスタンスを作成
@@ -68,19 +68,6 @@ class FocusUpdate(BaseModel):
         return v
 
 
-class Event(BaseModel):
-    """監視イベントのデータモデル."""
-
-    active_app: str | None = None
-    title: str | None = ""
-    url: str | None = ""
-    idle_ms: int | None = 0
-    ocr: str | None = ""
-    phone: str | None = ""
-    phone_detected: bool | None = False
-    screenshot: str | None = None  # base64エンコードされたスクリーンショット
-
-
 # --- アプリケーションのライフサイクルイベント ---
 
 
@@ -105,7 +92,7 @@ async def update_focus_target(req: FocusUpdate) -> dict[str, Any]:
 
 
 @app.post("/events")
-async def ingest_event(event: Event) -> dict[str, Any]:
+async def ingest_event(event: EventModel) -> IngestEventModel:
     """監視イベントを取り込み、AIで生産性を判定する."""
     llm_service: LLMService | None = STATE["llm_service"]
     if not llm_service:
@@ -120,15 +107,15 @@ async def ingest_event(event: Event) -> dict[str, Any]:
 
     # 状態を更新
     STATE["productive"] = is_productive
-    STATE["last_nudge"] = asdict(policy) if policy else None
-    STATE["last_event"] = event.model_dump()
+    STATE["last_nudge"] = policy
+    STATE["last_event"] = event
 
     log_message(
         f"Productive: {is_productive}. "
-        f"Nudge action: {policy.action if policy else 'N/A'}"
+        f"Nudge action: {policy['action'] if policy else 'N/A'}"
     )
 
-    return {"productive": is_productive, "policy": STATE["last_nudge"]}
+    return {"productive": is_productive, "policy": policy}
 
 
 @app.get("/status")
@@ -262,10 +249,10 @@ async def get_monitoring_page() -> HTMLResponse:
 
 
 def _evaluate_productivity_by_ai(
-    event: Event,
+    event: EventModel,
     llm: LLMService,
     task: str,
-) -> tuple[bool, NudgingPolicy | None]:
+) -> tuple[bool, NudgingPolicy]:
     """LLMを使用してイベントから生産性を判定する。.
 
     Args:
@@ -277,12 +264,10 @@ def _evaluate_productivity_by_ai(
         (bool, NudgingPolicy): (生産的かどうか, LLMの判断ポリシー)
 
     """
-    observations = event.model_dump()
-
     # LLMに判断を依頼
-    policy = llm.decide_nudging_policy(task=task, observations=observations)
+    policy = llm.decide_nudging_policy(task=task, observations=event)
 
     # "quiet"アクションは生産的とみなす
-    is_productive = policy.action == "quiet"
+    is_productive = policy["action"] == "quiet"
 
     return is_productive, policy

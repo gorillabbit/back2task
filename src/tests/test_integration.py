@@ -165,7 +165,7 @@ class Back2TaskIntegrationTest:
             )
 
             # アクションが適切な範囲内かチェック
-            if policy.action not in ["quiet", "gentle_nudge", "strong_nudge"]:
+            if policy["action"] not in ["quiet", "gentle_nudge", "strong_nudge"]:
                 return False
 
         return True
@@ -269,16 +269,16 @@ class Back2TaskIntegrationTest:
 
             # 非生産的な場合は通知
             if not actual_productive:
-                if policy.action == "gentle_nudge":
+                if policy["action"] == "gentle_nudge":
                     notification_service.notify(
                         "軽い注意",
-                        policy.tip or "作業に戻りましょう",
+                        policy["tip"] or "作業に戻りましょう",
                         NotificationLevel.WARNING,
                     )
-                elif policy.action == "strong_nudge":
+                elif policy["action"] == "strong_nudge":
                     notification_service.notify(
                         "強い注意",
-                        policy.tip or "今は作業時間です!",
+                        policy["tip"] or "今は作業時間です!",
                         NotificationLevel.URGENT,
                     )
 

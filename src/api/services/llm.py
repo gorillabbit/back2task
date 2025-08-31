@@ -1,24 +1,15 @@
 import json
 import os
 import time
-from dataclasses import dataclass
 from typing import Any
 
 import requests
 
+from src.model.models import EventModel, NudgingPolicy
+
 HTTP_OK = 200
 IDLE_LONG_MS = 60_000
 IDLE_SHORT_MS = 5_000
-
-
-@dataclass
-class NudgingPolicy:
-    """Nudging policy response structure."""
-
-    action: str  # "quiet", "gentle_nudge", "strong_nudge"
-    reason: str
-    tip: str | None = None
-    confidence: float = 0.5
 
 
 class LLMService:
@@ -83,12 +74,12 @@ Focus on being helpful, not annoying.
             time.sleep(self.min_call_interval - elapsed)
         self.last_call_time = time.time()
 
-    def _build_context_prompt(self, task: str, observations: dict[str, Any]) -> str:
+    def _build_context_prompt(self, task: str, observations: EventModel) -> str:
         """観測データからコンテキストプロンプトを構築."""
         active_app = observations.get("active_app") or "unknown"
         title = observations.get("title") or ""
         url = observations.get("url") or ""
-        idle_ms = observations.get("idle_ms", 0)
+        idle_ms = observations.get("idle_ms", 0) or 0
         screenshot = observations.get("screenshot") or ""
 
         # アイドル時間を分かりやすい形式に変換
@@ -119,7 +110,7 @@ Decide the best nudging action now.
     def decide_nudging_policy(
         self,
         task: str,
-        observations: dict[str, Any],
+        observations: EventModel,
     ) -> NudgingPolicy:
         """観測データに基づいてnudging policyを決定.
 
