@@ -111,7 +111,8 @@ class ScreenCapture:
             except Exception:
                 monitor_count = -1
 
-            err = f"{type(e).__name__}: {str(e)} | monitors={monitor_count} | bbox={self.bbox}"
+            err = f"{type(e).__name__}: {str(e)} | monitors={monitor_count}"
+            err += f"| bbox={self.bbox}"
             return None, err
 
     def save_screenshot(self) -> str:
