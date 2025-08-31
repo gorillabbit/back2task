@@ -95,7 +95,7 @@ if not exist "log" (
 )
 
 REM Use PowerShell to start process, redirect logs, and capture PID
-powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $apiOut = Join-Path $logDir 'api.log'; $apiErr = Join-Path $logDir 'api.err.log'; $proc = Start-Process uv -ArgumentList 'run','uvicorn','api.main:app','--reload','--port','5577','--host','127.0.0.1' -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr -PassThru; $proc.Id | Out-File -FilePath 'api_server.pid' -Encoding ascii"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_api.ps1"
 
 echo [START] Waiting for server to respond...
 :wait_for_server
@@ -111,7 +111,7 @@ echo [START] FastAPI server started successfully.
 echo [START] Starting Event Pump...
 
 REM Use PowerShell to start pump, redirect logs, and capture PID
-powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process uv -ArgumentList 'run','python','src/watchers/pump.py' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_pump.ps1"
 
 REM A simple sleep to assume the pump starts.
 timeout /t 3 /nobreak >nul
