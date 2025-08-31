@@ -1,18 +1,16 @@
 """Event pump that aggregates watcher data and posts to the API."""
 
 import argparse
-import importlib
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from types import ModuleType
 from typing import Any
+
+import requests
 
 from src.watchers.active_window import get_active_app
 from src.watchers.idle import get_idle_ms
 from src.watchers.screen_capture import ScreenCapture
-
-requests: ModuleType = importlib.import_module("requests")
 
 # HTTP status codes
 HTTP_OK = 200

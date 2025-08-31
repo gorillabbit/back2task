@@ -1,21 +1,18 @@
-#!/usr/bin/env python3
 """Back2Task MVP Integration Test.
 
 完全な統合テストとデモンストレーション
 """
 
-import importlib
 import sys
 import time
-from types import ModuleType
 from typing import Any
+
+import requests
 
 # 各コンポーネントをインポート
 from src.api.services.llm import LLMService
 from src.ui.notifications import NotificationLevel, NotificationService
 from src.watchers.pump import EventPump
-
-requests: ModuleType = importlib.import_module("requests")
 
 # HTTP status codes / thresholds
 HTTP_OK = 200
@@ -65,12 +62,14 @@ class Back2TaskIntegrationTest:
                 "task_id": "integration_test",
                 "minutes": 1,  # 1分のテストセッション
             }
-            response = requests.post(f"{self.api_url}/focus/start", json=start_payload)
+            response = requests.post(
+                f"{self.api_url}/focus/start", json=start_payload, timeout=20
+            )
             if response.status_code != HTTP_OK:
                 ok = False
             else:
                 # 2. ステータス確認
-                response = requests.get(f"{self.api_url}/status")
+                response = requests.get(f"{self.api_url}/status", timeout=20)
                 if response.status_code != HTTP_OK:
                     ok = False
                 else:
@@ -102,7 +101,7 @@ class Back2TaskIntegrationTest:
 
                         for i, event in enumerate(test_events):
                             response = requests.post(
-                                f"{self.api_url}/events", json=event
+                                f"{self.api_url}/events", json=event, timeout=20
                             )
                             if response.status_code != HTTP_OK:
                                 ok = False
@@ -224,7 +223,9 @@ class Back2TaskIntegrationTest:
         """エンドツーエンドシナリオテスト."""
         # 1. セッション開始
         start_payload = {"task_id": "e2e_test", "minutes": 1}
-        response = requests.post(f"{self.api_url}/focus/start", json=start_payload)
+        response = requests.post(
+            f"{self.api_url}/focus/start", json=start_payload, timeout=20
+        )
         if response.status_code != HTTP_OK:
             return False
 
@@ -281,8 +282,7 @@ class Back2TaskIntegrationTest:
         for _i, scenario in enumerate(scenarios):
             # イベント送信
             response = requests.post(
-                f"{self.api_url}/events",
-                json=scenario["event"],
+                f"{self.api_url}/events", json=scenario["event"], timeout=20
             )
             if response.status_code != HTTP_OK:
                 return False
@@ -317,7 +317,7 @@ class Back2TaskIntegrationTest:
             time.sleep(2)  # シナリオ間の待機
 
         # 5. セッション状態確認
-        response = requests.get(f"{self.api_url}/status")
+        response = requests.get(f"{self.api_url}/status", timeout=20)
         if response.status_code != HTTP_OK:
             return False
         response.json()
