@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
 
 from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
+from src.ui.notifications import NotificationService
 
 # FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(
@@ -136,6 +137,12 @@ async def get_current_status() -> dict[str, Any]:
     return {
         k: v for k, v in STATE.items() if k not in ["llm_service", "logs", "last_event"]
     }
+
+
+@app.post("/notify")
+async def call_notify(_: dict[str, Any]) -> bool:
+    """通知を起動する"""
+    return NotificationService().notify("通知", "タスクに戻ってください")
 
 
 # --- モニタリング用エンドポイント ---

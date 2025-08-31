@@ -4,6 +4,7 @@ import requests
 
 from src.watchers.active_window import get_active_app
 from src.watchers.idle import get_idle_ms
+from src.watchers.logger import logger
 from src.watchers.screen_capture import ScreenCapture
 
 # HTTP status codes
@@ -25,7 +26,7 @@ def collect_all_data() -> dict[str, Any]:
     }
 
 
-def send_event(event_data: dict[str, Any]) -> bool:
+def send_event(event_data: dict[str, Any]) -> dict[str, Any] | None:
     """イベントデータをAPIに送信
 
     Args:
@@ -41,10 +42,10 @@ def send_event(event_data: dict[str, Any]) -> bool:
 
     status_code = int(getattr(response, "status_code", 0))
     ok = status_code == HTTP_OK
+    logger.info(ok)
     if ok:
-        response.json()
-        return True
-    return False
+        return response.json()
+    return None
 
 
 def check_api_availability() -> bool:
@@ -59,7 +60,11 @@ def main() -> None:
     api_status = check_api_availability()
     if api_status:
         while True:
-            send_event(collect_all_data())
+            result = send_event(collect_all_data())
+            logger.info(result)
+            if result:
+                logger.info("通知を送る")
+                requests.post("http://localhost:5577/notify", json=result, timeout=3)
 
 
 if __name__ == "__main__":
