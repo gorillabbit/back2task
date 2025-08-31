@@ -68,9 +68,7 @@ class EventPump:
 
     def collect_screenshot_data(self) -> str:
         """スクリーンショット情報を収集"""
-        screenshot_b64, err = ScreenCapture().capture_as_base64()
-        self.last_screenshot_error = err or ""
-        return screenshot_b64 or ""
+        return ScreenCapture().capture_as_base64()
 
     def collect_all_data(self) -> dict[str, Any]:
         """全てのWatcherからデータを収集."""
@@ -225,36 +223,18 @@ def main() -> None:
     """メイン関数."""
     parser = argparse.ArgumentParser(description="Back2Task Event Pump")
     parser.add_argument(
-        "--api-url",
-        default="http://localhost:5577/events",
-        help="APIエンドポイントURL",
-    )
-    parser.add_argument(
         "--interval",
         type=float,
         default=2.0,
         help="データ収集間隔(秒)",
     )
-    parser.add_argument(
-        "--disable-screenshot",
-        action="store_true",
-        help="スクリーンショット取得を無効化",
-    )
-    parser.add_argument("--test-once", action="store_true", help="1回だけテスト実行")
-
     args = parser.parse_args()
 
     # イベントポンプを作成
     pump = EventPump(api_url=args.api_url, interval=args.interval)
 
     try:
-        if args.test_once:
-            # テスト実行
-            pump.run_once()
-        else:
-            # 連続実行
-            pump.run_continuous()
-
+        pump.run_continuous()
     finally:
         pump.stop()
 
