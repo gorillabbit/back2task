@@ -90,19 +90,6 @@ class NotificationService:
         return list(self._history)
 
 
-# 便利関数とシングルトン管理（グローバル再代入は避ける）
-_service_holder: dict[str, NotificationService | None] = {"svc": None}
-
-
-def get_notification_service(
-    config: NotificationConfig | None = None,
-) -> NotificationService | None:
-    """Return a lazily-instantiated default :class:`NotificationService`."""
-    if _service_holder["svc"] is None:
-        _service_holder["svc"] = NotificationService(config)
-    return _service_holder["svc"]
-
-
 def notify(
     title: str,
     message: str,
@@ -112,7 +99,7 @@ def notify(
     flash: bool | None = None,
 ) -> bool:
     """Wrap :meth:`NotificationService.notify` for convenience."""
-    service = get_notification_service()
+    service = NotificationService()
     if service:
         return service.notify(title, message, level, sound=sound, flash=flash)
     return False

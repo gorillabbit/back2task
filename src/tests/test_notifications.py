@@ -4,20 +4,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.ui.notifications import (
-    NotificationLevel,
-    NotificationService,
-    get_notification_service,
-)
-
-
-def test_get_notification_service_singleton() -> None:
-    """Ensure the default notification service is a singleton."""
-    first = get_notification_service()
-    second = get_notification_service()
-    if first is not second:
-        msg = "Expected get_notification_service() to return the same instance"
-        raise AssertionError(msg)
+from src.ui.notifications import NotificationLevel, NotificationService
 
 
 def test_notify_non_windows() -> None:
