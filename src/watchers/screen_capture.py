@@ -6,24 +6,24 @@ Logs are written to a temp file, e.g., %TEMP%/back2task/pump.log on Windows.
 
 import base64
 import logging
-import os
 import tempfile
 import time
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 import mss
 from PIL import Image
 
 # --- Logging setup (module-level) ---
-_LOG_DIR = os.path.join(tempfile.gettempdir(), "back2task")
-os.makedirs(_LOG_DIR, exist_ok=True)
-_LOG_FILE = os.path.join(_LOG_DIR, "pump.log")
+_LOG_DIR = Path(tempfile.gettempdir()) / "back2task"
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
+_LOG_FILE = _LOG_DIR / "pump.log"
 
 logger = logging.getLogger("back2task.watchers.screen_capture")
 if not logger.handlers:
     logger.setLevel(logging.INFO)
-    _fh = logging.FileHandler(_LOG_FILE, encoding="utf-8")
+    _fh = logging.FileHandler(str(_LOG_FILE), encoding="utf-8")
     _fh.setFormatter(
         logging.Formatter(
             fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -58,8 +58,8 @@ class ScreenCapture:
                     "Monitors detected: %s | chosen=%s", len(monitors) - 1, chosen
                 )
                 return chosen
-        except Exception as e:
-            logger.exception("Failed to get primary monitor bbox: %s", e)
+        except Exception:
+            logger.exception("Failed to get primary monitor bbox")
             return {"top": 0, "left": 0, "width": 1920, "height": 1080}
 
     def capture_screen(self) -> Image.Image | None:
@@ -79,8 +79,8 @@ class ScreenCapture:
                     "RGB", screenshot.size, screenshot.bgra, "raw", "BGRX"
                 )
 
-        except Exception as e:
-            logger.exception("Screen capture failed | bbox=%s | error=%s", self.bbox, e)
+        except Exception:
+            logger.exception("Screen capture failed | bbox=%s", self.bbox)
             return None
 
     def capture_as_base64(self) -> tuple[str | None, str | None]:
@@ -104,19 +104,19 @@ class ScreenCapture:
             buffer.seek(0)
             img_str = base64.b64encode(buffer.getvalue()).decode()
             self.last_capture_time = time.time()
-            return img_str, None
-
-        except Exception as e:
+        except (OSError, ValueError, mss.exception.ScreenShotError) as e:  # type: ignore[attr-defined]
             # 追加情報としてモニター情報を可能なら付ける
             try:
                 with mss.mss() as sct:
                     monitor_count = len(sct.monitors) - 1
-            except Exception:
+            except (OSError, mss.exception.ScreenShotError):  # type: ignore[attr-defined]
                 monitor_count = -1
 
             err = f"{type(e).__name__}: {e!s} | monitors={monitor_count}"
             err += f"| bbox={self.bbox}"
             return None, err
+        else:
+            return img_str, None
 
     def save_screenshot(self) -> str:
         """スクリーンショットを保存.
@@ -137,15 +137,15 @@ class ScreenCapture:
                 return ""
 
             # 一時ディレクトリに保存
-            temp_dir = tempfile.gettempdir()
-            filepath = os.path.join(temp_dir, filename)
+            temp_dir = Path(tempfile.gettempdir())
+            filepath = temp_dir / filename
 
-            image.save(filepath, format="PNG")
-            return filepath
-
-        except Exception as e:
-            logger.exception("save_screenshot failed | error=%s", e)
+            image.save(str(filepath), format="PNG")
+        except Exception:
+            logger.exception("save_screenshot failed")
             return ""
+        else:
+            return str(filepath)
 
     def get_screen_info(self) -> dict[str, Any]:
         """スクリーン情報を取得.
@@ -167,5 +167,5 @@ class ScreenCapture:
                 }
 
         except Exception as e:
-            logger.exception("get_screen_info failed: %s", e)
+            logger.exception("get_screen_info failed")
             return {"available": False, "error": str(e)}

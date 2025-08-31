@@ -1,9 +1,9 @@
 """FastAPI app exposing Back2Task endpoints and simple monitoring UI."""
 
-import os
 import tempfile
 from collections import deque
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -41,26 +41,27 @@ def _get_pump_log_tail(max_lines: int = 200) -> list[str]:
 
     リポジトリ内の `log/pump.log`。存在しなければ旧互換で一時ディレクトリ配下を参照
     """
-    try:
-        # Prefer repository-local log directory
-        repo_root = os.path.dirname(os.path.dirname(__file__))
-        repo_log_path = os.path.join(repo_root, "log", "pump.log")
+    # Prefer repository-local log directory
+    repo_root = Path(__file__).resolve().parent.parent
+    repo_log_path = repo_root / "log" / "pump.log"
 
-        candidates = [repo_log_path]
+    candidates: list[Path] = [repo_log_path]
 
-        # Fallback to legacy tmp path used by start.sh on Unix-like envs
-        legacy_tmp_dir = os.path.join(tempfile.gettempdir(), "back2task")
-        legacy_tmp_path = os.path.join(legacy_tmp_dir, "pump.log")
-        candidates.append(legacy_tmp_path)
+    # Fallback to legacy tmp path used by start.sh on Unix-like envs
+    legacy_tmp_dir = Path(tempfile.gettempdir()) / "back2task"
+    legacy_tmp_path = legacy_tmp_dir / "pump.log"
+    candidates.append(legacy_tmp_path)
 
-        for path in candidates:
-            if os.path.exists(path):
-                with open(path, encoding="utf-8", errors="ignore") as f:
+    for path in candidates:
+        if path.exists():
+            try:
+                with path.open(encoding="utf-8", errors="ignore") as f:
                     lines = f.read().splitlines()
                 return lines[-max_lines:]
-        return []
-    except Exception:
-        return []
+            except (OSError, UnicodeError):
+                # If the file cannot be read for any reason, try next candidate
+                continue
+    return []
 
 
 # --- Pydanticモデル定義 ---
@@ -138,10 +139,7 @@ async def ingest_event(event: Event) -> dict[str, Any]:
     STATE["last_event"] = event.model_dump()
 
     # Lightweight diagnostics for screenshot capture
-    try:
-        sc_len = len(event.screenshot) if event.screenshot else 0
-    except Exception:
-        sc_len = 0
+    sc_len = len(event.screenshot) if event.screenshot else 0
     sc_err = event.screenshot_error or ""
 
     log_message(

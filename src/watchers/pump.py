@@ -1,5 +1,6 @@
 """Event pump that aggregates watcher data and posts to the API."""
 
+import argparse
 import importlib
 import time
 from collections.abc import Callable
@@ -12,6 +13,9 @@ from src.watchers.idle import get_idle_ms
 from src.watchers.screen_capture import ScreenCapture
 
 requests: ModuleType = importlib.import_module("requests")
+
+# HTTP status codes
+HTTP_OK = 200
 
 
 class EventPump:
@@ -54,37 +58,23 @@ class EventPump:
 
     def collect_window_data(self) -> dict[str, str | None]:
         """前面ウィンドウ情報を収集."""
-        try:
-            window_info = get_active_app()
-            self.last_window_info = window_info
-            self.error_counts["window"] = 0  # エラーカウントリセット
-            return window_info
-
-        except Exception:
-            self.error_counts["window"] += 1
-            return self.last_window_info or {"active_app": None, "title": None}
+        window_info = get_active_app()
+        self.last_window_info = window_info
+        self.error_counts["window"] = 0  # エラーカウントリセット
+        return window_info
 
     def collect_idle_data(self) -> int:
         """アイドル時間情報を収集."""
-        try:
-            idle_time = get_idle_ms()
-            self.last_idle_time = idle_time
-            self.error_counts["idle"] = 0
-            return idle_time
-
-        except Exception:
-            self.error_counts["idle"] += 1
-            return self.last_idle_time
+        idle_time = get_idle_ms()
+        self.last_idle_time = idle_time
+        self.error_counts["idle"] = 0
+        return idle_time
 
     def collect_screenshot_data(self) -> str:
         """スクリーンショット情報を収集"""
-        try:
-            screenshot_b64, err = ScreenCapture().capture_as_base64()
-            self.last_screenshot_error = err or ""
-            return screenshot_b64 or ""
-        except Exception:
-            self.last_screenshot_error = "unexpected error in collect_screenshot_data"
-            return ""
+        screenshot_b64, err = ScreenCapture().capture_as_base64()
+        self.last_screenshot_error = err or ""
+        return screenshot_b64 or ""
 
     def collect_all_data(self) -> dict[str, Any]:
         """全てのWatcherからデータを収集."""
@@ -123,21 +113,18 @@ class EventPump:
         """
         try:
             response = requests.post(self.api_url, json=event_data, timeout=5)
-
-            if response.status_code == 200:
-                self.error_counts["api"] = 0
-                self.stats["events_sent"] += 1
-                self.stats["last_event_time"] = time.time()
-                return True
-            self.error_counts["api"] += 1
-            return False
-
         except requests.exceptions.RequestException:
             self.error_counts["api"] += 1
             return False
-        except Exception:
-            self.error_counts["api"] += 1
-            return False
+        else:
+            ok = response.status_code == HTTP_OK
+            if ok:
+                self.error_counts["api"] = 0
+                self.stats["events_sent"] += 1
+                self.stats["last_event_time"] = time.time()
+            else:
+                self.error_counts["api"] += 1
+            return ok
 
     def check_api_availability(self) -> bool:
         """APIの可用性をチェック."""
@@ -145,11 +132,11 @@ class EventPump:
             # ステータスエンドポイントで確認
             status_url = self.api_url.replace("/events", "/status")
             response = requests.get(status_url, timeout=3)
-            status_code: int = response.status_code
-            return status_code == 200
-
-        except Exception:
+        except requests.exceptions.RequestException:
             return False
+        else:
+            status_code: int = response.status_code
+            return status_code == HTTP_OK
 
     def run_once(self) -> bool:
         """1回のデータ収集・送信サイクルを実行.
@@ -158,23 +145,16 @@ class EventPump:
             bool: 成功時True
 
         """
-        try:
-            # データ収集
-            event_data = self.collect_all_data()
+        # データ収集
+        event_data = self.collect_all_data()
 
-            # API送信
-            success = self.send_event(event_data)
+        # API送信
+        success = self.send_event(event_data)
 
-            if success:
-                pass
-            else:
-                self.stats["errors_total"] += 1
-
-            return success
-
-        except Exception:
+        if not success:
             self.stats["errors_total"] += 1
-            return False
+
+        return success
 
     def run_continuous(
         self, callback: Callable[[bool, dict[str, Any]], None] | None = None
@@ -201,7 +181,7 @@ class EventPump:
 
                 # コールバック実行
                 if callback:
-                    callback(success, self.stats)
+                    callback(success=success, stats=self.stats)
 
                 # エラーが多すぎる場合は一時停止
                 total_errors = sum(self.error_counts.values())
@@ -217,8 +197,6 @@ class EventPump:
                 time.sleep(sleep_time)
 
         except KeyboardInterrupt:
-            self.stop()
-        except Exception:
             self.stop()
 
     def stop(self) -> None:
@@ -248,8 +226,6 @@ class EventPump:
 
 def main() -> None:
     """メイン関数."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Back2Task Event Pump")
     parser.add_argument(
         "--api-url",
@@ -260,7 +236,7 @@ def main() -> None:
         "--interval",
         type=float,
         default=2.0,
-        help="データ収集間隔（秒）",
+        help="データ収集間隔(秒)",
     )
     parser.add_argument(
         "--disable-screenshot",
@@ -280,14 +256,14 @@ def main() -> None:
             pump.run_once()
         else:
             # 連続実行
-            def status_callback(success: bool, stats: dict[str, Any]) -> None:
-                if stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0:
+            def status_callback(*, success: bool, stats: dict[str, Any]) -> None:
+                # 進捗の節目でフック可能なスペースを確保
+                frequent = stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0
+                if frequent or not success:
                     pass
 
             pump.run_continuous(callback=status_callback)
 
-    except Exception:
-        pass
     finally:
         pump.stop()
 

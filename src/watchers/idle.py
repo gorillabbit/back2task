@@ -2,26 +2,32 @@
 
 import ctypes  # 再確認(型定義に使用)
 import time
+from typing import Any, ClassVar
 
 
 class LASTINPUTINFO(ctypes.Structure):
     """Windows LASTINPUTINFO structure."""
 
-    _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ("cbSize", ctypes.c_uint),
+        ("dwTime", ctypes.c_uint),
+    ]
 
 
 def get_idle_ms() -> int:
     """最後の入力からの経過時間をミリ秒で取得."""
-    try:
-        lii = LASTINPUTINFO()
-        lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
+    lii = LASTINPUTINFO()
+    lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
 
-        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):  # type: ignore[attr-defined]
+    try:
+        ok = ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii))  # type: ignore[attr-defined]
+    except (AttributeError, OSError):
+        return 0
+    else:
+        if ok:
             current_tick = int(ctypes.windll.kernel32.GetTickCount())  # type: ignore[attr-defined]
             idle_time = int(current_tick - lii.dwTime)
             return max(0, idle_time)
-        return 0
-    except Exception:
         return 0
 
 

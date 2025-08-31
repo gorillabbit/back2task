@@ -12,12 +12,19 @@ from src.ui.notifications import (
 
 
 def test_get_notification_service_singleton() -> None:
+    """Ensure the default notification service is a singleton."""
     first = get_notification_service()
     second = get_notification_service()
-    assert first is second
+    if first is not second:
+        msg = "Expected get_notification_service() to return the same instance"
+        raise AssertionError(msg)
 
 
 def test_notify_non_windows() -> None:
+    """On non-Windows, notify returns False (UI unavailable)."""
     service = NotificationService()
-    if platform.system() != "Windows":
-        assert service.notify("title", "message", NotificationLevel.INFO) is False
+    if platform.system() != "Windows" and (
+        service.notify("title", "message", NotificationLevel.INFO) is not False
+    ):
+        msg = "notify() should return False on non-Windows platforms"
+        raise AssertionError(msg)

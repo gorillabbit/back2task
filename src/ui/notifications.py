@@ -30,6 +30,8 @@ from typing import Any
 
 
 class NotificationLevel(Enum):
+    """Notification severity levels used by the service."""
+
     INFO = "info"
     WARNING = "warning"
     URGENT = "urgent"
@@ -77,24 +79,24 @@ class NotificationService:
         success = False
         if self.platform == "Windows":
             try:
-                MB_OK = 0x00000000
-                MB_ICON_INFO = 0x00000040
-                MB_ICON_WARN = 0x00000030
-                MB_ICON_STOP = 0x00000010
-                MB_TOPMOST = 0x00040000
+                mb_ok = 0x00000000
+                mb_icon_info = 0x00000040
+                mb_icon_warn = 0x00000030
+                mb_icon_stop = 0x00000010
+                mb_topmost = 0x00040000
 
                 icon = {
-                    NotificationLevel.INFO: MB_ICON_INFO,
-                    NotificationLevel.WARNING: MB_ICON_WARN,
-                    NotificationLevel.URGENT: MB_ICON_STOP,
+                    NotificationLevel.INFO: mb_icon_info,
+                    NotificationLevel.WARNING: mb_icon_warn,
+                    NotificationLevel.URGENT: mb_icon_stop,
                 }[level]
 
-                flags = MB_OK | icon | MB_TOPMOST
+                flags = mb_ok | icon | mb_topmost
                 ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
                     0, message, title, flags
                 )
                 success = True
-            except Exception:
+            except (AttributeError, OSError):
                 success = False
 
         self._history.append(
@@ -129,18 +131,17 @@ class NotificationService:
         return list(self._history)
 
 
-# 便利関数とグローバルインスタンス
-_default_service: NotificationService | None = None
+# 便利関数とシングルトン管理（グローバル再代入は避ける）
+_service_holder: dict[str, NotificationService | None] = {"svc": None}
 
 
 def get_notification_service(
     config: NotificationConfig | None = None,
 ) -> NotificationService:
     """Return a lazily-instantiated default :class:`NotificationService`."""
-    global _default_service
-    if _default_service is None:
-        _default_service = NotificationService(config)
-    return _default_service
+    if _service_holder["svc"] is None:
+        _service_holder["svc"] = NotificationService(config)
+    return _service_holder["svc"]
 
 
 def notify(
@@ -151,7 +152,7 @@ def notify(
     sound: bool | None = None,
     flash: bool | None = None,
 ) -> bool:
-    """Convenience wrapper around :meth:`NotificationService.notify`."""
+    """Wrap :meth:`NotificationService.notify` for convenience."""
     service = get_notification_service()
     return service.notify(title, message, level, sound=sound, flash=flash)
 
