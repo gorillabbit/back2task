@@ -19,10 +19,10 @@ jobs:
             - name: Sync dependencies (dev, frozen)
               run: uv sync --dev --frozen
             - name: Ruff (lint)
-              run: ruff check .
+              run: uv run ruff check .
             - name: MyPy (type check)
-              run: mypy .
+              run: uv run mypy .
             - name: Pyright (type check)
-              run: pyright --project pyproject.toml
+              run: uv run pyright --project pyproject.toml
             - name: Run tests
               run: pytest
