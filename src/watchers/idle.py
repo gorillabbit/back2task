@@ -1,7 +1,3 @@
-"""Idle detection helpers (Windows uses LASTINPUTINFO; others fallback to 0)."""
-
-from __future__ import annotations
-
 import sys
 from typing import Any, ClassVar
 

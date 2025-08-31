@@ -1,5 +1,3 @@
-"""Event pump that aggregates watcher data and posts to the API."""
-
 import argparse
 import time
 from collections.abc import Callable

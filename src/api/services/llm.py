@@ -1,5 +1,3 @@
-"""LLM integration via OpenAI-compatible API (e.g., LM Studio)."""
-
 import json
 import os
 import time

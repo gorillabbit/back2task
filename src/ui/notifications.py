@@ -1,26 +1,3 @@
-"""Simple notification helpers used by tests.
-
-The original project targets a Windows environment and relied on a thin
-wrapper around the Win32 ``MessageBox`` API.  For the purposes of the unit
-tests in this kata we only need a very small subset of that functionality:
-
-* the ability to instantiate a ``NotificationService`` with an optional
-  configuration object,
-* recording of sent notifications so tests can introspect the history, and
-* a light‑weight capability inquiry method.
-
-The previous implementation attempted to expose a configuration type and a
-history mechanism but the pieces were never implemented which resulted in a
-``NameError`` during import.  The convenience helper functions also attempted
-to forward keyword arguments that ``NotificationService.notify`` did not
-accept.  Importing :mod:`ui.notifications` therefore failed before any tests
-could run.
-
-To make the module usable in both Windows and non‑Windows environments we
-provide minimal cross‑platform fallbacks and keep a record of all notification
-requests.
-"""
-
 import ctypes
 import platform
 import time

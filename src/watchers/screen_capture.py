@@ -1,9 +1,3 @@
-"""Screen capture utilities built on top of mss and PIL.
-
-Adds explicit logging at capture time to aid root-cause analysis.
-Logs are written to a temp file, e.g., %TEMP%/back2task/pump.log on Windows.
-"""
-
 import base64
 import logging
 import tempfile

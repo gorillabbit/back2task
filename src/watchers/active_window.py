@@ -1,5 +1,3 @@
-"""Windows active window helpers using win32 APIs."""
-
 import time
 
 import psutil

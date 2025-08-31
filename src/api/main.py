@@ -1,5 +1,3 @@
-"""FastAPI app exposing Back2Task endpoints and simple monitoring UI."""
-
 import tempfile
 from collections import deque
 from dataclasses import asdict

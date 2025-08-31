@@ -1,7 +1,15 @@
 {
     "cSpell.words": [
-        "LASTINPUTINFO"
+        "bgra",
+        "BGRX",
+        "frombytes",
+        "LASTINPUTINFO",
+        "levelname",
+        "mypy",
+        "pyproject",
+        "pyright",
+        "pytest",
+        "pywintypes"
     ],
-    "python.languageServer": "Pylance",
-    "python.analysis.typeCheckingMode": "strict"
+    "python.languageServer": "Pylance"
 }

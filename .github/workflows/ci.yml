@@ -25,4 +25,4 @@ jobs:
             - name: Pyright (type check)
               run: uv run pyright --project pyproject.toml
             - name: Run tests
-              run: pytest
+              run: uv run pytest

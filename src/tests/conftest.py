@@ -1,16 +1,8 @@
-"""Pytest configuration.
-
-Ensures that the repository root is importable so that modules such as
-``api`` and ``ui`` can be resolved when tests are executed.  Without this
-adjustment the default ``sys.path`` configured by ``pytest`` omits the project
-root which results in ``ModuleNotFoundError`` during collection.
-"""
-
 import sys
 from pathlib import Path
 
 # Add the repository root (the directory containing this file) to ``sys.path``
-# if it is not already present.  This mirrors the behaviour of running Python
+# if it is not already present.  This mirrors the behavior of running Python
 # scripts directly from the project root.
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:

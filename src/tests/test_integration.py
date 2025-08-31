@@ -1,8 +1,3 @@
-"""Back2Task MVP Integration Test.
-
-完全な統合テストとデモンストレーション
-"""
-
 import sys
 import time
 from typing import Any
