@@ -1,11 +1,12 @@
 """LLM integration via OpenAI-compatible API (e.g., LM Studio)."""
 
-import requests
 import json
 import os
 import time
 from dataclasses import dataclass
 from typing import Any
+
+import requests
 
 HTTP_OK = 200
 IDLE_LONG_MS = 60_000
@@ -246,5 +247,6 @@ def create_llm_service(
     resolved_base = base_url or os.getenv("LLM_URL")
     resolved_model = model_name or os.getenv("LLM_MODEL")
     if not resolved_base or not resolved_model:
-        raise RuntimeError("LLM_URL and LLM_MODEL must be set (e.g., in .env.local).")
+        msg = "LLM_URL and LLM_MODEL must be set (e.g., in .env.local)."
+        raise RuntimeError(msg)
     return LLMService(base_url=resolved_base, model_name=resolved_model)

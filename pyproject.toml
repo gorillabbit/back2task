@@ -45,8 +45,10 @@ target-version = "py311"
 
 [tool.ruff.lint]
 # Limit linting to errors and undefined names to keep analysis focused.
-select = ["E", "F"]
+select = ["ALL"]
 ignore = [
+    "D100", # public package にdocstring必須化
+    "D104", # docstring必須化
     "D203",
     "D213",
     "COM812",
@@ -74,8 +76,8 @@ explicit_package_bases = true
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
   "pytest>=7.4.0",
   "pytest-asyncio>=0.21.0",
   "pytest-mock>=3.12.0",
@@ -84,4 +86,5 @@ dev-dependencies = [
   "black>=24.3.0",
   "isort>=5.13.2",
   "pyright>=1.1.403",
+  "types-requests>=2.32.4.20250809",
 ]

@@ -1,16 +1,16 @@
 """FastAPI app exposing Back2Task endpoints and simple monitoring UI."""
 
-from collections import deque
 import os
 import tempfile
+from collections import deque
 from dataclasses import asdict
 from typing import Any
 
-from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
 
+from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
 
 # FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(
@@ -55,7 +55,7 @@ def _get_pump_log_tail(max_lines: int = 200) -> list[str]:
 
         for path in candidates:
             if os.path.exists(path):
-                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(path, encoding="utf-8", errors="ignore") as f:
                     lines = f.read().splitlines()
                 return lines[-max_lines:]
         return []

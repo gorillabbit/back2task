@@ -42,6 +42,7 @@ class ScreenCapture:
         Args:
         bbox: キャプチャ領域 {"top": int, "left": int, "width": int, "height": int}
              Noneの場合は画面全体.
+
         """
         self.bbox = bbox or self._get_primary_monitor_bbox()
         self.last_capture_time: float = 0.0
@@ -58,7 +59,7 @@ class ScreenCapture:
                 )
                 return chosen
         except Exception as e:
-            logger.error("Failed to get primary monitor bbox: %s", e)
+            logger.exception("Failed to get primary monitor bbox: %s", e)
             return {"top": 0, "left": 0, "width": 1920, "height": 1080}
 
     def capture_screen(self) -> Image.Image | None:
@@ -66,6 +67,7 @@ class ScreenCapture:
 
         Returns:
             PIL.Image: キャプチャされた画像、失敗時はNone
+
         """
         try:
             with mss.mss() as sct:
@@ -86,6 +88,7 @@ class ScreenCapture:
 
         Returns:
             (base64, error): 成功時は(base64, None)。失敗時は(None, エラーメッセージ)
+
         """
         try:
             # ここでは例外を握りつぶさずに詳細を返す
@@ -111,7 +114,7 @@ class ScreenCapture:
             except Exception:
                 monitor_count = -1
 
-            err = f"{type(e).__name__}: {str(e)} | monitors={monitor_count}"
+            err = f"{type(e).__name__}: {e!s} | monitors={monitor_count}"
             err += f"| bbox={self.bbox}"
             return None, err
 
@@ -124,6 +127,7 @@ class ScreenCapture:
 
         Returns:
             str: 保存されたファイルパス
+
         """
         filename = f"screenshot_{int(time.time())}.png"
 
@@ -148,6 +152,7 @@ class ScreenCapture:
 
         Returns:
             Dict: スクリーン情報
+
         """
         try:
             with mss.mss() as sct:
@@ -162,5 +167,5 @@ class ScreenCapture:
                 }
 
         except Exception as e:
-            logger.error("get_screen_info failed: %s", e)
+            logger.exception("get_screen_info failed: %s", e)
             return {"available": False, "error": str(e)}

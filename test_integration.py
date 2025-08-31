@@ -4,16 +4,16 @@
 完全な統合テストとデモンストレーション
 """
 
+import importlib
 import sys
 import time
-import importlib
 from types import ModuleType
 from typing import Any
 
 # 各コンポーネントをインポート
-from api.services.llm import LLMService
-from ui.notifications import NotificationLevel, NotificationService
-from watchers.pump import EventPump
+from src.api.services.llm import LLMService
+from src.ui.notifications import NotificationLevel, NotificationService
+from src.watchers.pump import EventPump
 
 requests: ModuleType = importlib.import_module("requests")
 
