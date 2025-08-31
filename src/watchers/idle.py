@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 class LASTINPUTINFO(ctypes.Structure):
     """Windows LASTINPUTINFO structure."""
 
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
+    _fields_: ClassVar[Any] = [
         ("cbSize", ctypes.c_uint),
         ("dwTime", ctypes.c_uint),
     ]

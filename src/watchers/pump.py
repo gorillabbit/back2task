@@ -257,13 +257,7 @@ def main() -> None:
             pump.run_once()
         else:
             # 連続実行
-            def status_callback(success: bool, stats: dict[str, Any]) -> None:
-                # 進捗の節目でフック可能なスペースを確保
-                frequent = stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0
-                if frequent or not success:
-                    pass
-
-            pump.run_continuous(callback=status_callback)
+            pump.run_continuous()
 
     finally:
         pump.stop()
