@@ -90,8 +90,13 @@ echo [CLEANUP] Cleanup complete.
 REM --- 3. Start Services ---
 echo [START] Starting FastAPI server...
 
-REM Use PowerShell to start process and capture PID
-powershell -Command "$proc = Start-Process python -ArgumentList '-m', 'uvicorn', 'api.main:app', '--reload', '--port', '5577', '--host', '127.0.0.1' -WindowStyle Hidden -PassThru; $proc.Id | Out-File -FilePath 'api_server.pid' -Encoding ascii"
+REM Ensure log directory exists at repo root
+if not exist "log" (
+    mkdir "log" >nul 2>&1
+)
+
+REM Use PowerShell to start process, redirect logs, and capture PID
+powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $apiOut = Join-Path $logDir 'api.log'; $apiErr = Join-Path $logDir 'api.err.log'; $proc = Start-Process python -ArgumentList '-m','uvicorn','api.main:app','--reload','--port','5577','--host','127.0.0.1' -WindowStyle Hidden -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr -PassThru; $proc.Id | Out-File -FilePath 'api_server.pid' -Encoding ascii"
 
 echo [START] Waiting for server to respond...
 :wait_for_server
@@ -106,8 +111,8 @@ echo [START] FastAPI server started successfully.
 
 echo [START] Starting Event Pump...
 
-REM Use PowerShell to start pump and capture PID
-powershell -Command "$proc = Start-Process python -ArgumentList 'watchers/pump.py', '--api-url', 'http://127.0.0.1:5577/events', '--interval', '3.0' -WindowStyle Hidden -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
+REM Use PowerShell to start pump, redirect logs, and capture PID
+powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process python -ArgumentList 'watchers/pump.py','--api-url','http://127.0.0.1:5577/events','--interval','3.0' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
 
 REM A simple sleep to assume the pump starts.
 timeout /t 3 /nobreak >nul

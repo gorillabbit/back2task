@@ -7,9 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from typing import Any
 
-from .active_window import get_active_app
-from .idle import get_idle_ms
-from .screen_capture import capture_screenshot_base64
+from watchers.active_window import get_active_app
+from watchers.idle import get_idle_ms
+from watchers.screen_capture import ScreenCapture
 
 requests: ModuleType = importlib.import_module("requests")
 
@@ -37,6 +37,7 @@ class EventPump:
         self.last_window_info: dict[str, str | None] = {}
         self.last_idle_time = 0
         self.last_screenshot = ""
+        self.last_screenshot_error = ""
         self.screenshot_enabled = True
 
         # エラー管理
@@ -50,24 +51,6 @@ class EventPump:
             "start_time": None,
             "last_event_time": None,
         }
-
-    def initialize_screenshot(self) -> bool:
-        """スクリーンキャプチャ機能を初期化.
-
-        Returns:
-            bool: 初期化成功時True
-
-        """
-        try:
-            # テストキャプチャを実行
-            test_screenshot = capture_screenshot_base64()
-            if test_screenshot:
-                self.screenshot_enabled = True
-                return True
-            return False
-
-        except Exception:
-            return False
 
     def collect_window_data(self) -> dict[str, str | None]:
         """前面ウィンドウ情報を収集."""
@@ -94,22 +77,14 @@ class EventPump:
             return self.last_idle_time
 
     def collect_screenshot_data(self) -> str:
-        """スクリーンショット情報を収集."""
+        """スクリーンショット情報を収集"""
         try:
-            # エラーが多い場合はスキップ
-            if self.error_counts["screenshot"] >= self.max_errors:
-                return self.last_screenshot
-
-            screenshot_b64 = capture_screenshot_base64()
-            if screenshot_b64:
-                self.last_screenshot = screenshot_b64
-                self.error_counts["screenshot"] = 0
-                return screenshot_b64
-            return self.last_screenshot
-
+            screenshot_b64, err = ScreenCapture().capture_as_base64()
+            self.last_screenshot_error = err or ""
+            return screenshot_b64 or ""
         except Exception:
-            self.error_counts["screenshot"] += 1
-            return self.last_screenshot
+            self.last_screenshot_error = "unexpected error in collect_screenshot_data"
+            return ""
 
     def collect_all_data(self) -> dict[str, Any]:
         """全てのWatcherからデータを収集."""
@@ -133,6 +108,7 @@ class EventPump:
             "url": "",  # 将来的にブラウザURL取得を追加
             "idle_ms": idle_time,
             "screenshot": screenshot_data if screenshot_data else "",
+            "screenshot_error": self.last_screenshot_error,
         }
 
     def send_event(self, event_data: dict[str, Any]) -> bool:
@@ -297,10 +273,6 @@ def main() -> None:
 
     # イベントポンプを作成
     pump = EventPump(api_url=args.api_url, interval=args.interval)
-
-    # スクリーンショット機能を初期化（デフォルトで有効）
-    if not args.disable_screenshot:
-        pump.initialize_screenshot()
 
     try:
         if args.test_once:

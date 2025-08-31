@@ -1,6 +1,8 @@
 """FastAPI app exposing Back2Task endpoints and simple monitoring UI."""
 
 from collections import deque
+import os
+import tempfile
 from dataclasses import asdict
 from typing import Any
 
@@ -35,6 +37,33 @@ def log_message(message: str) -> None:
     STATE["logs"].append(message)
 
 
+def _get_pump_log_tail(max_lines: int = 200) -> list[str]:
+    """watchersのスクリーンキャプチャログの末尾を取得する.
+
+    リポジトリ内の `log/pump.log`。存在しなければ旧互換で一時ディレクトリ配下を参照
+    """
+    try:
+        # Prefer repository-local log directory
+        repo_root = os.path.dirname(os.path.dirname(__file__))
+        repo_log_path = os.path.join(repo_root, "log", "pump.log")
+
+        candidates = [repo_log_path]
+
+        # Fallback to legacy tmp path used by start.sh on Unix-like envs
+        legacy_tmp_dir = os.path.join(tempfile.gettempdir(), "back2task")
+        legacy_tmp_path = os.path.join(legacy_tmp_dir, "pump.log")
+        candidates.append(legacy_tmp_path)
+
+        for path in candidates:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    lines = f.read().splitlines()
+                return lines[-max_lines:]
+        return []
+    except Exception:
+        return []
+
+
 # --- Pydanticモデル定義 ---
 
 
@@ -64,6 +93,7 @@ class Event(BaseModel):
     phone: str | None = ""
     phone_detected: bool | None = False
     screenshot: str | None = None  # base64エンコードされたスクリーンショット
+    screenshot_error: str | None = ""
 
 
 # --- アプリケーションのライフサイクルイベント ---
@@ -92,7 +122,7 @@ async def update_focus_target(req: FocusUpdate) -> dict[str, Any]:
 @app.post("/events")
 async def ingest_event(event: Event) -> dict[str, Any]:
     """監視イベントを取り込み、AIで生産性を判定する."""
-    llm_service: LLMService = STATE["llm_service"]
+    llm_service: LLMService | None = STATE["llm_service"]
     if not llm_service:
         raise HTTPException(status_code=503, detail="LLM Service not available")
 
@@ -108,9 +138,17 @@ async def ingest_event(event: Event) -> dict[str, Any]:
     STATE["last_nudge"] = asdict(policy) if policy else None
     STATE["last_event"] = event.model_dump()
 
+    # Lightweight diagnostics for screenshot capture
+    try:
+        sc_len = len(event.screenshot) if event.screenshot else 0
+    except Exception:
+        sc_len = 0
+    sc_err = event.screenshot_error or ""
+
     log_message(
         f"Event processed. Productive: {is_productive}. "
-        "Nudge action: {policy.action if policy else 'N/A'}",
+        f"Nudge action: {policy.action if policy else 'N/A'} | "
+        f"screenshot_b64_len={sc_len} | error={sc_err if sc_err else 'None'}"
     )
 
     return {"ok": True, "productive": is_productive, "policy": STATE["last_nudge"]}
@@ -134,6 +172,7 @@ async def get_monitoring_data() -> dict[str, Any]:
         "last_event": STATE["last_event"],
         "last_nudge": STATE["last_nudge"],
         "logs": list(STATE["logs"]),
+        "pump_logs": _get_pump_log_tail(),
         "focus_target": STATE["focus_target"],
         "productive": STATE["productive"],
     }
@@ -179,8 +218,10 @@ async def get_monitoring_page() -> HTMLResponse:
                     <pre id="event-data">No data yet.</pre>
                 </div>
                 <div class="grid-item">
-                    <h2>Logs</h2>
+                    <h2>API Logs</h2>
                     <div id="logs"></div>
+                    <h2 style="margin-top:12px;">Pump Logs</h2>
+                    <div id="pump-logs" style="height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px;"></div>
                 </div>
             </div>
         </div>
@@ -193,7 +234,8 @@ async def get_monitoring_page() -> HTMLResponse:
                     // Screenshot
                     const screenshotImg = document.getElementById('screenshot');
                     if (data.last_event && data.last_event.screenshot) {
-                        screenshotImg.src = `data:image/jpeg;base64,${data.last_event.screenshot}`;
+                        // Screenshots are captured as PNG by default
+                        screenshotImg.src = `data:image/png;base64,${data.last_event.screenshot}`;
                     }
 
                     // Nudge Policy
@@ -211,6 +253,13 @@ async def get_monitoring_page() -> HTMLResponse:
                     const logsDiv = document.getElementById('logs');
                     logsDiv.innerHTML = data.logs.map(log => `<div>${log}</div>`).join('');
                     logsDiv.scrollTop = logsDiv.scrollHeight; // Auto-scroll to bottom
+
+                    // Pump Logs
+                    const pumpLogsDiv = document.getElementById('pump-logs');
+                    if (pumpLogsDiv) {
+                        pumpLogsDiv.innerHTML = (data.pump_logs || []).map(log => `<div>${log}</div>`).join('');
+                        pumpLogsDiv.scrollTop = pumpLogsDiv.scrollHeight;
+                    }
 
                 } catch (error) {
                     console.error('Error fetching monitoring data:', error);
