@@ -117,7 +117,8 @@ class EventPump:
             self.error_counts["api"] += 1
             return False
         else:
-            ok = response.status_code == HTTP_OK
+            status_code = int(getattr(response, "status_code", 0))
+            ok = status_code == HTTP_OK
             if ok:
                 self.error_counts["api"] = 0
                 self.stats["events_sent"] += 1
@@ -181,7 +182,7 @@ class EventPump:
 
                 # コールバック実行
                 if callback:
-                    callback(success=success, stats=self.stats)
+                    callback(success, self.stats)
 
                 # エラーが多すぎる場合は一時停止
                 total_errors = sum(self.error_counts.values())
@@ -256,7 +257,7 @@ def main() -> None:
             pump.run_once()
         else:
             # 連続実行
-            def status_callback(*, success: bool, stats: dict[str, Any]) -> None:
+            def status_callback(success: bool, stats: dict[str, Any]) -> None:
                 # 進捗の節目でフック可能なスペースを確保
                 frequent = stats["events_sent"] % 10 == 0 and stats["events_sent"] > 0
                 if frequent or not success:

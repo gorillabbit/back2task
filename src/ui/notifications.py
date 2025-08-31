@@ -92,9 +92,7 @@ class NotificationService:
                 }[level]
 
                 flags = mb_ok | icon | mb_topmost
-                ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
-                    0, message, title, flags
-                )
+                ctypes.windll.user32.MessageBoxW(0, message, title, flags)
                 success = True
             except (AttributeError, OSError):
                 success = False
@@ -137,7 +135,7 @@ _service_holder: dict[str, NotificationService | None] = {"svc": None}
 
 def get_notification_service(
     config: NotificationConfig | None = None,
-) -> NotificationService:
+) -> NotificationService | None:
     """Return a lazily-instantiated default :class:`NotificationService`."""
     if _service_holder["svc"] is None:
         _service_holder["svc"] = NotificationService(config)
@@ -154,7 +152,9 @@ def notify(
 ) -> bool:
     """Wrap :meth:`NotificationService.notify` for convenience."""
     service = get_notification_service()
-    return service.notify(title, message, level, sound=sound, flash=flash)
+    if service:
+        return service.notify(title, message, level, sound=sound, flash=flash)
+    return False
 
 
 def notify_gentle_nudge(message: str) -> bool:

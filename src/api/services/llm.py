@@ -26,7 +26,12 @@ class NudgingPolicy:
 class LLMService:
     """OpenAI互換APIクライアント（LM Studio + Gemma 3 4B等に対応）."""
 
-    def __init__(self, base_url: str, model_name: str, timeout: float = 20.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        model_name: str,
+        timeout: float = 20.0,
+    ) -> None:
         """初期化
 
         Args:

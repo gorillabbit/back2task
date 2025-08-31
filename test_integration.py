@@ -118,7 +118,7 @@ class Back2TaskIntegrationTest:
 
     def test_llm_integration(self) -> bool:
         """LLM統合テスト."""
-        llm_service = LLMService(base_url=self.llm_url)
+        llm_service = LLMService(base_url=self.llm_url, model_name="google/gemma-3-4b")
 
         # LLM可用性確認（不可でも失敗扱いにはしない）
         _ = llm_service.is_available()
@@ -229,7 +229,7 @@ class Back2TaskIntegrationTest:
             return False
 
         # 2. LLMサービス初期化
-        llm_service = LLMService(base_url=self.llm_url)
+        llm_service = LLMService(base_url=self.llm_url, model_name="google/gemma-3-4b")
 
         # 3. 通知サービス初期化
         notification_service = NotificationService()

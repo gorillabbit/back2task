@@ -104,12 +104,12 @@ class ScreenCapture:
             buffer.seek(0)
             img_str = base64.b64encode(buffer.getvalue()).decode()
             self.last_capture_time = time.time()
-        except (OSError, ValueError, mss.exception.ScreenShotError) as e:  # type: ignore[attr-defined]
+        except (OSError, ValueError, mss.ScreenShotError) as e:
             # 追加情報としてモニター情報を可能なら付ける
             try:
                 with mss.mss() as sct:
                     monitor_count = len(sct.monitors) - 1
-            except (OSError, mss.exception.ScreenShotError):  # type: ignore[attr-defined]
+            except (OSError, mss.ScreenShotError):
                 monitor_count = -1
 
             err = f"{type(e).__name__}: {e!s} | monitors={monitor_count}"
