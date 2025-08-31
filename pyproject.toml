@@ -88,3 +88,7 @@ dev = [
   "pyright>=1.1.403",
   "types-requests>=2.32.4.20250809",
 ]
+
+[[tool.mypy.overrides]]
+module = ["src.watchers.idle", "src.ui.notifications"]
+disable_error_code = ["attr-defined"]
