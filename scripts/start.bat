@@ -111,7 +111,7 @@ echo [START] FastAPI server started successfully.
 echo [START] Starting Event Pump...
 
 REM Use PowerShell to start pump, redirect logs, and capture PID
-powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process uv -ArgumentList 'run','python','src/watchers/pump.py','--api-url','http://127.0.0.1:5577/events','--interval','3.0' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
+powershell -Command "$repo = Get-Location; $logDir = Join-Path $repo 'log'; if (!(Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }; $pumpOut = Join-Path $logDir 'pump.log'; $pumpErr = Join-Path $logDir 'pump.err.log'; $proc = Start-Process uv -ArgumentList 'run','python','src/watchers/pump.py','--interval','3.0' -WindowStyle Hidden -RedirectStandardOutput $pumpOut -RedirectStandardError $pumpErr -PassThru; $proc.Id | Out-File -FilePath 'event_pump.pid' -Encoding ascii"
 
 REM A simple sleep to assume the pump starts.
 timeout /t 3 /nobreak >nul

@@ -17,11 +17,7 @@ HTTP_OK = 200
 class EventPump:
     """各Watcherからデータを収集してAPIに送信するクラス."""
 
-    def __init__(
-        self,
-        api_url: str = "http://localhost:5577/events",
-        interval: float = 2.0,
-    ) -> None:
+    def __init__(self, interval: float = 2.0) -> None:
         """初期化する
 
         Args:
@@ -29,7 +25,7 @@ class EventPump:
         interval: データ収集間隔(秒)
 
         """
-        self.api_url = api_url
+        self.api_url = "http://localhost:5577/events"
         self.interval = interval
         self.running = False
 
@@ -66,10 +62,6 @@ class EventPump:
         self.error_counts["idle"] = 0
         return idle_time
 
-    def collect_screenshot_data(self) -> str:
-        """スクリーンショット情報を収集"""
-        return ScreenCapture().capture_as_base64()
-
     def collect_all_data(self) -> dict[str, Any]:
         """全てのWatcherからデータを収集."""
         # 並行してデータ収集
@@ -77,7 +69,7 @@ class EventPump:
             # 各Watcherのタスクを投入
             window_future = executor.submit(self.collect_window_data)
             idle_future = executor.submit(self.collect_idle_data)
-            screenshot_future = executor.submit(self.collect_screenshot_data)
+            screenshot_future = executor.submit(ScreenCapture().capture_as_base64)
 
             # 結果を収集
             window_data = window_future.result(timeout=3)
@@ -96,7 +88,7 @@ class EventPump:
         }
 
     def send_event(self, event_data: dict[str, Any]) -> bool:
-        """イベントデータをAPIに送信.
+        """イベントデータをAPIに送信
 
         Args:
             event_data: 送信するイベントデータ
@@ -123,15 +115,11 @@ class EventPump:
 
     def check_api_availability(self) -> bool:
         """APIの可用性をチェック."""
-        try:
-            # ステータスエンドポイントで確認
-            status_url = self.api_url.replace("/events", "/status")
-            response = requests.get(status_url, timeout=3)
-        except requests.exceptions.RequestException:
-            return False
-        else:
-            status_code: int = response.status_code
-            return status_code == HTTP_OK
+        # ステータスエンドポイントで確認
+        status_url = self.api_url.replace("/events", "/status")
+        response = requests.get(status_url, timeout=3)
+        status_code: int = response.status_code
+        return status_code == HTTP_OK
 
     def run_once(self) -> bool:
         """1回のデータ収集・送信サイクルを実行.
@@ -231,7 +219,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # イベントポンプを作成
-    pump = EventPump(api_url=args.api_url, interval=args.interval)
+    pump = EventPump(interval=args.interval)
 
     try:
         pump.run_continuous()

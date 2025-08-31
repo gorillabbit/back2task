@@ -164,7 +164,7 @@ Decide the best nudging action now.
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/png;base64,{screenshot}",
+                                    "url": f"data:image/png;base64,{screenshot}"
                                 },
                             },
                         ],

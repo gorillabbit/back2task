@@ -190,7 +190,7 @@ class Back2TaskIntegrationTest:
 
     def test_watchers_data_collection(self) -> bool:
         """Watchers データ収集テスト."""
-        event_pump = EventPump(api_url=f"{self.api_url}/events")
+        event_pump = EventPump()
 
         event_data = event_pump.collect_all_data()
 

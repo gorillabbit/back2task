@@ -112,7 +112,7 @@ fi
 
 # 2. Event Pump 起動
 echo -e "${BLUE}👀 Event Pump (監視システム) 起動中...${NC}"
-nohup uv run python src/watchers/pump.py --api-url http://127.0.0.1:5577/events --interval 3.0 \
+nohup uv run python src/watchers/pump.py --interval 3.0 \
     > /tmp/back2task/pump.log 2>&1 &
 PUMP_PID=$!
 echo "$PUMP_PID" > /tmp/back2task/pump.pid

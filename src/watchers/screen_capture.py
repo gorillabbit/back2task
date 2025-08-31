@@ -4,7 +4,6 @@ import tempfile
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Any
 
 import mss
 from PIL import Image
@@ -35,7 +34,7 @@ class ScreenCapture:
 
         Args:
         bbox: キャプチャ領域 {"top": int, "left": int, "width": int, "height": int}
-             Noneの場合は画面全体.
+             Noneの場合は画面全体
 
         """
         self.bbox = bbox or self._get_primary_monitor_bbox()
@@ -43,37 +42,15 @@ class ScreenCapture:
         logger.info("ScreenCapture initialized | bbox=%s", self.bbox)
 
     def _get_primary_monitor_bbox(self) -> dict[str, int]:
-        """プライマリモニターの実際の解像度を取得."""
+        """プライマリモニターの実際の解像度を取得"""
         with mss.mss() as sct:
             monitors = sct.monitors
             chosen = monitors[1] if len(monitors) > 1 else monitors[0]
             logger.info("Monitors detected: %s | chosen=%s", len(monitors) - 1, chosen)
             return chosen
 
-    def capture_screen(self) -> Image.Image | None:
-        """指定領域のスクリーンキャプチャを取得.
-
-        Returns:
-            PIL.Image: キャプチャされた画像、失敗時はNone
-
-        """
-        with mss.mss() as sct:
-            # スクリーンキャプチャを実行
-            screenshot = sct.grab(self.bbox)
-
-            # PIL Imageに変換
-            return Image.frombytes(
-                "RGB", screenshot.size, screenshot.bgra, "raw", "BGRX"
-            )
-
     def capture_as_base64(self) -> str:
-        """スクリーンキャプチャをbase64で返す.
-
-        Returns:
-            base64:
-
-        """
-        # ここでは例外を握りつぶさずに詳細を返す
+        """スクリーンキャプチャをbase64で返す"""
         with mss.mss() as sct:
             bbox = self.bbox
             screenshot = sct.grab(bbox)
@@ -88,46 +65,3 @@ class ScreenCapture:
         self.last_capture_time = time.time()
 
         return img_str
-
-    def save_screenshot(self) -> str:
-        """スクリーンショットを保存.
-
-        Args:
-            filename: ファイル名（Noneの場合は自動生成）
-            format: 画像形式
-
-        Returns:
-            str: 保存されたファイルパス
-
-        """
-        filename = f"screenshot_{int(time.time())}.png"
-
-        image = self.capture_screen()
-        if image is None:
-            return ""
-
-        # 一時ディレクトリに保存
-        temp_dir = Path(tempfile.gettempdir())
-        filepath = temp_dir / filename
-
-        image.save(str(filepath), format="PNG")
-
-        return str(filepath)
-
-    def get_screen_info(self) -> dict[str, Any]:
-        """スクリーン情報を取得.
-
-        Returns:
-            Dict: スクリーン情報
-
-        """
-        with mss.mss() as sct:
-            monitors = sct.monitors
-
-            return {
-                "available": True,
-                "monitor_count": len(monitors) - 1,  # monitors[0]は全画面
-                "primary_monitor": monitors[1] if len(monitors) > 1 else None,
-                "all_monitors": monitors[1:] if len(monitors) > 1 else [],
-                "capture_bbox": self.bbox,
-            }
