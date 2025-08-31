@@ -1,9 +1,10 @@
-import ctypes
 import platform
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+
+from win10toast import ToastNotifier  # pyright: ignore[reportMissingTypeStubs]
 
 
 class NotificationLevel(Enum):
@@ -55,25 +56,8 @@ class NotificationService:
 
         success = False
         if self.platform == "Windows":
-            try:
-                mb_ok = 0x00000000
-                mb_icon_info = 0x00000040
-                mb_icon_warn = 0x00000030
-                mb_icon_stop = 0x00000010
-                mb_topmost = 0x00040000
-
-                icon = {
-                    NotificationLevel.INFO: mb_icon_info,
-                    NotificationLevel.WARNING: mb_icon_warn,
-                    NotificationLevel.URGENT: mb_icon_stop,
-                }[level]
-
-                flags = mb_ok | icon | mb_topmost
-                ctypes.windll.user32.MessageBoxW(0, message, title, flags)
-                success = True
-            except (AttributeError, OSError):
-                success = False
-
+            notifier = ToastNotifier()
+            notifier.show_toast(title, message, duration=5)  # pyright: ignore[reportUnknownMemberType]
         self._history.append(
             {
                 "title": title,
