@@ -15,7 +15,7 @@ dependencies = [
     "psutil>=5.9.0",
     "requests>=2.31.0",
     "mss>=9.0.0",
-    "pywin32>=311",
+    "pywin32>=311; sys_platform == 'win32'",
     "pillow>=11.3.0",
 ]
 
