@@ -1,29 +1,11 @@
 import base64
-import logging
-import tempfile
 import time
 from io import BytesIO
-from pathlib import Path
 
 import mss
 from PIL import Image
 
-# --- Logging setup (module-level) ---
-_LOG_DIR = Path(tempfile.gettempdir()) / "back2task"
-_LOG_DIR.mkdir(parents=True, exist_ok=True)
-_LOG_FILE = _LOG_DIR / "pump.log"
-
-logger = logging.getLogger("back2task.watchers.screen_capture")
-if not logger.handlers:
-    logger.setLevel(logging.INFO)
-    _fh = logging.FileHandler(str(_LOG_FILE), encoding="utf-8")
-    _fh.setFormatter(
-        logging.Formatter(
-            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-    logger.addHandler(_fh)
+from src.watchers.logger import logger
 
 
 class ScreenCapture:

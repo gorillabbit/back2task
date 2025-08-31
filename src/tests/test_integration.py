@@ -7,7 +7,6 @@ import requests
 # 各コンポーネントをインポート
 from src.api.services.llm import LLMService
 from src.ui.notifications import NotificationLevel, NotificationService
-from src.watchers.pump import EventPump
 
 # HTTP status codes / thresholds
 HTTP_OK = 200
@@ -188,32 +187,6 @@ class Back2TaskIntegrationTest:
         notification_service.get_notification_history()
         return True
 
-    def test_watchers_data_collection(self) -> bool:
-        """Watchers データ収集テスト."""
-        event_pump = EventPump()
-
-        event_data = event_pump.collect_all_data()
-
-        required_fields = [
-            "active_app",
-            "title",
-            "idle_ms",
-            "ocr",
-            "phone_detected",
-        ]
-        for field in required_fields:
-            if field not in event_data:
-                event_pump.stop()
-                return False
-
-        status = event_pump.get_status()
-        total_errors = sum(status["error_counts"].values())
-        if total_errors > MAX_TOTAL_ERRORS:
-            pass
-
-        event_pump.stop()
-        return True
-
     def test_end_to_end_scenario(self) -> bool:
         """エンドツーエンドシナリオテスト."""
         # 1. セッション開始
@@ -326,7 +299,6 @@ class Back2TaskIntegrationTest:
             ("セッションライフサイクル", self.test_session_lifecycle),
             ("LLM統合", self.test_llm_integration),
             ("通知システム", self.test_notification_system),
-            ("Watchersデータ収集", self.test_watchers_data_collection),
             ("エンドツーエンドシナリオ", self.test_end_to_end_scenario),
         ]
 

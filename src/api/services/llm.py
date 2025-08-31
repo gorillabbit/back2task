@@ -142,9 +142,6 @@ Decide the best nudging action now.
             )
 
         try:
-            # レート制限適用
-            self._rate_limit()
-
             # プロンプト構築
             context_prompt = self._build_context_prompt(task, observations)
 
@@ -175,13 +172,7 @@ Decide the best nudging action now.
                 messages.append({"role": "user", "content": context_prompt})
 
             # API呼び出し
-            payload = {
-                "model": self.model_name,
-                "messages": messages,
-                "temperature": 0.2,
-                "max_tokens": 150,
-                "stop": ["\n\n", "```"],
-            }
+            payload = {"model": self.model_name, "messages": messages}
 
             headers = {"Content-Type": "application/json"}
 
@@ -201,7 +192,8 @@ Decide the best nudging action now.
                 )
 
             response_data = response.json()
-            content = response_data["choices"][0]["message"]["content"].strip()
+            content: str = response_data["choices"][0]["message"]["content"]
+            content = content.replace("```json", "").replace("```", "")
 
             # JSONパース
             try:

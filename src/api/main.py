@@ -1,4 +1,3 @@
-import tempfile
 from collections import deque
 from dataclasses import asdict
 from pathlib import Path
@@ -43,22 +42,10 @@ def _get_pump_log_tail(max_lines: int = 200) -> list[str]:
     repo_root = Path(__file__).resolve().parent.parent
     repo_log_path = repo_root / "log" / "pump.log"
 
-    candidates: list[Path] = [repo_log_path]
-
-    # Fallback to legacy tmp path used by start.sh on Unix-like envs
-    legacy_tmp_dir = Path(tempfile.gettempdir()) / "back2task"
-    legacy_tmp_path = legacy_tmp_dir / "pump.log"
-    candidates.append(legacy_tmp_path)
-
-    for path in candidates:
-        if path.exists():
-            try:
-                with path.open(encoding="utf-8", errors="ignore") as f:
-                    lines = f.read().splitlines()
-                return lines[-max_lines:]
-            except (OSError, UnicodeError):
-                # If the file cannot be read for any reason, try next candidate
-                continue
+    if repo_log_path.exists():
+        with repo_log_path.open(encoding="utf-8", errors="ignore") as f:
+            lines = f.read().splitlines()
+        return lines[-max_lines:]
     return []
 
 
@@ -91,7 +78,6 @@ class Event(BaseModel):
     phone: str | None = ""
     phone_detected: bool | None = False
     screenshot: str | None = None  # base64エンコードされたスクリーンショット
-    screenshot_error: str | None = ""
 
 
 # --- アプリケーションのライフサイクルイベント ---
@@ -136,17 +122,12 @@ async def ingest_event(event: Event) -> dict[str, Any]:
     STATE["last_nudge"] = asdict(policy) if policy else None
     STATE["last_event"] = event.model_dump()
 
-    # Lightweight diagnostics for screenshot capture
-    sc_len = len(event.screenshot) if event.screenshot else 0
-    sc_err = event.screenshot_error or ""
-
     log_message(
-        f"Event processed. Productive: {is_productive}. "
-        f"Nudge action: {policy.action if policy else 'N/A'} | "
-        f"screenshot_b64_len={sc_len} | error={sc_err if sc_err else 'None'}"
+        f"Productive: {is_productive}. "
+        f"Nudge action: {policy.action if policy else 'N/A'}"
     )
 
-    return {"ok": True, "productive": is_productive, "policy": STATE["last_nudge"]}
+    return {"productive": is_productive, "policy": STATE["last_nudge"]}
 
 
 @app.get("/status")
