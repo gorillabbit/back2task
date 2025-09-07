@@ -49,6 +49,7 @@ target-version = "py311"
 select = ["ALL"]
 ignore = [
     "D100", # public package にdocstring必須化
+    "D103", # public function にdocstring必須化
     "D104", # docstring必須化
     "D203",
     "D213",

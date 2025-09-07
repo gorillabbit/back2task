@@ -88,28 +88,34 @@ lms load google/gemma-3-4b
 lms server start
 
 # Back2Task 起動（.env.local を利用）
-./scripts/start.sh
+# 統一ランチャー (Python) を直接実行します
+# Windows (CMD/PowerShell)
+python scripts\start.py
+# macOS/Linux
+python3 scripts/start.py
 
 # 停止
 lms server stop
 ````
 
-スクリプトも用意しています。
+従来のシェル/バッチスクリプトも利用可能です（必要な場合のみ）。
 
 ```bash
 # Windows (cmd)
 scripts\lms_start_gemma.bat
-scripts\start.bat
 
 # macOS/Linux (bash)
 bash scripts/lms_start_gemma.sh
-./scripts/start.sh
 
 # 停止（共通）
 scripts\lms_stop_gemma.bat    # Windows
 bash scripts/lms_stop_gemma.sh # macOS/Linux
 
-./scripts/stop.sh           # 停止
+# Back2Task 自体の停止（Python ランチャーで停止）
+# Windows
+python scripts\stop.py
+# macOS/Linux
+python3 scripts/stop.py
 ```
 
 補足:
@@ -131,9 +137,11 @@ curl http://localhost:5577/status | python3 -m json.tool
 
 ```
 
-# ログ確認
-
-tail -f /tmp/back2task/\*.log
+# ログ確認（本ランチャーは ./log/ に出力）
+# macOS/Linux
+tail -f log/*.log
+# Windows (PowerShell)
+Get-Content -Wait -Tail 100 log/*.log
 
 ````
 
