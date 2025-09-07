@@ -1,6 +1,7 @@
 import base64
 import time
 from io import BytesIO
+from typing import cast
 
 import mss
 from PIL import Image
@@ -27,7 +28,10 @@ class ScreenCapture:
         """プライマリモニターの実際の解像度を取得"""
         with mss.mss() as sct:
             monitors = sct.monitors
-            chosen = monitors[1] if len(monitors) > 1 else monitors[0]
+            chosen = cast(
+                "dict[str, int]",
+                monitors[1] if len(monitors) > 1 else monitors[0],
+            )
             logger.info("Monitors detected: %s | chosen=%s", len(monitors) - 1, chosen)
             return chosen
 

@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import requests
 from utils import (
@@ -67,7 +67,8 @@ def http_ok(url: str, timeout: float = 2.5) -> bool:
     except requests.RequestException:
         return False
     else:
-        return HTTP_OK_MIN <= resp.status_code < HTTP_OK_MAX
+        status = cast("int", getattr(resp, "status_code", 0))
+        return HTTP_OK_MIN <= status < HTTP_OK_MAX
 
 
 def wait_http(url: str, attempts: int = 30, interval: float = 1.0) -> bool:

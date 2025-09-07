@@ -86,7 +86,7 @@ def iter_procs_on_port(port: int) -> Iterable[psutil.Process]:
                     except psutil.NoSuchProcess:
                         continue
     except psutil.Error:
-        return []
+        return
 
 
 def stop_by_port(port: int) -> int:
