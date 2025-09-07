@@ -84,7 +84,7 @@ def wait_http(url: str, attempts: int = 30, interval: float = 1.0) -> bool:
 
 def background_popen(
     cmd: list[str], stdout_path: Path, stderr_path: Path, env: dict[str, str]
-) -> subprocess.Popen:
+) -> subprocess.Popen[bytes]:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with stdout_path.open("ab", buffering=0) as stdout_f, stderr_path.open(
         "ab", buffering=0
@@ -253,8 +253,11 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except subprocess.CalledProcessError as e:
+        if isinstance(e.cmd, list):
+            cmd_str = " ".join(cast("list[str]", e.cmd))
+        else:
+            cmd_str = cast("str", e.cmd)
         error(
-            f"Command failed with exit code {e.returncode}: "
-            f"{(' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd)}"
+            f"Command failed with exit code {e.returncode}: {cmd_str}"
         )
         raise SystemExit(e.returncode or 1) from e

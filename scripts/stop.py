@@ -74,7 +74,7 @@ def stop_by_pidfile(path: Path, name: str) -> bool:
 
 
 def iter_procs_on_port(port: int) -> Iterable[psutil.Process]:
-    seen = set()
+    seen: set[int] = set()
     try:
         for conn in psutil.net_connections(kind="inet"):
             if conn.laddr and getattr(conn.laddr, "port", None) == port:
