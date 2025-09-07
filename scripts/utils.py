@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 # Minimal, truly shared utilities only.
@@ -14,16 +15,16 @@ PUMP_PID_FILE = REPO_ROOT / "event_pump.pid"
 
 # Lightweight logging helpers used in both scripts
 def info(msg: str) -> None:
-    print(f"[INFO] {msg}")
+    sys.stdout.write(f"[INFO] {msg}\n")
 
 
 def ok(msg: str) -> None:
-    print(f"[OK] {msg}")
+    sys.stdout.write(f"[OK] {msg}\n")
 
 
 def warn(msg: str) -> None:
-    print(f"[WARN] {msg}")
+    sys.stdout.write(f"[WARN] {msg}\n")
 
 
 def error(msg: str) -> None:
-    print(f"[ERROR] {msg}")
+    sys.stdout.write(f"[ERROR] {msg}\n")

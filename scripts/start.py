@@ -7,12 +7,30 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 import time
-from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
+from typing import TYPE_CHECKING
 
-from utils import REPO_ROOT, error, info, ok, warn
+import requests
+from utils import (
+    API_PID_FILE,
+    LOG_DIR,
+    PUMP_PID_FILE,
+    REPO_ROOT,
+    error,
+    info,
+    ok,
+    warn,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+HTTP_OK_MIN = 200
+HTTP_OK_MAX = 400
+CREATE_NEW_PROCESS_GROUP = 0x00000200
+DETACHED_PROCESS = 0x00000008
 
 
 def load_env_local(path: Path) -> None:
@@ -20,8 +38,8 @@ def load_env_local(path: Path) -> None:
     if not env_path.exists():
         error(f".env.local not found at {env_path}")
         raise SystemExit(1)
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         if "=" not in line:
@@ -42,13 +60,14 @@ def require_env(keys: list[str]) -> None:
 
 
 def http_ok(url: str, timeout: float = 2.5) -> bool:
+    if not url.lower().startswith(("http://", "https://")):
+        return False
     try:
-        with urlopen(url, timeout=timeout) as resp:
-            return 200 <= getattr(resp, "status", 200) < 400
-    except URLError:
+        resp = requests.get(url, timeout=timeout)
+    except requests.RequestException:
         return False
-    except Exception:
-        return False
+    else:
+        return HTTP_OK_MIN <= resp.status_code < HTTP_OK_MAX
 
 
 def wait_http(url: str, attempts: int = 30, interval: float = 1.0) -> bool:
@@ -56,57 +75,56 @@ def wait_http(url: str, attempts: int = 30, interval: float = 1.0) -> bool:
         if http_ok(url):
             return True
         time.sleep(interval)
-        print(".", end="", flush=True)
-    print()
+        sys.stdout.write(".")
+        sys.stdout.flush()
+    sys.stdout.write("\n")
     return http_ok(url)
 
 
 def background_popen(
     cmd: list[str], stdout_path: Path, stderr_path: Path, env: dict[str, str]
 ) -> subprocess.Popen:
-    from utils import LOG_DIR
-
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    stdout_f = open(stdout_path, "ab", buffering=0)
-    stderr_f = open(stderr_path, "ab", buffering=0)
+    with stdout_path.open("ab", buffering=0) as stdout_f, stderr_path.open(
+        "ab", buffering=0
+    ) as stderr_f:
+        creationflags = 0
+        start_new_session = False
+        if platform.system() == "Windows":
+            creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
+        else:
+            start_new_session = True
 
-    creationflags = 0
-    start_new_session = False
-    if platform.system() == "Windows":
-        CREATE_NEW_PROCESS_GROUP = 0x00000200
-        DETACHED_PROCESS = 0x00000008
-        creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
-    else:
-        start_new_session = True
-
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(REPO_ROOT),
-        stdout=stdout_f,
-        stderr=stderr_f,
-        env=env,
-        creationflags=creationflags,
-        start_new_session=start_new_session,
-    )
-    return proc
+        return subprocess.Popen(  # noqa: S603
+            cmd,
+            cwd=str(REPO_ROOT),
+            stdout=stdout_f,
+            stderr=stderr_f,
+            env=env,
+            creationflags=creationflags,
+            start_new_session=start_new_session,
+        )
 
 
 def ensure_uv_and_sync() -> None:
-    if shutil.which("uv") is None:
+    uv = shutil.which("uv")
+    if uv is None:
         error("uv not found. Install from https://docs.astral.sh/uv/")
         if platform.system() == "Windows":
-            print("e.g. PowerShell:  irm https://astral.sh/uv/install.ps1 | iex")
+            sys.stdout.write(
+                "e.g. PowerShell:  irm https://astral.sh/uv/install.ps1 | iex\n"
+            )
         else:
-            print("e.g. curl -LsSf https://astral.sh/uv/install.sh | sh")
+            sys.stdout.write(
+                "e.g. curl -LsSf https://astral.sh/uv/install.sh | sh\n"
+            )
         raise SystemExit(1)
     info("Syncing dependencies with uv (including dev)...")
-    subprocess.run(["uv", "sync", "--dev"], check=True)
+    subprocess.run([uv, "sync", "--dev"], check=True)  # noqa: S603
     ok("Dependencies synced")
 
 
 def start_api(env: dict[str, str]) -> int:
-    from utils import API_PID_FILE, LOG_DIR
-
     info("Starting FastAPI server (uvicorn)...")
     api_out = LOG_DIR / "api.log"
     api_err = LOG_DIR / "api.err.log"
@@ -127,7 +145,7 @@ def start_api(env: dict[str, str]) -> int:
         env=env,
     )
     API_PID_FILE.write_text(str(proc.pid), encoding="ascii")
-    print("   Waiting for server to respond...")
+    sys.stdout.write("   Waiting for server to respond...\n")
     if wait_http("http://127.0.0.1:5577/status", attempts=30):
         ok(f"FastAPI server up (PID {proc.pid})")
     else:
@@ -136,8 +154,6 @@ def start_api(env: dict[str, str]) -> int:
 
 
 def start_pump(env: dict[str, str]) -> int:
-    from utils import LOG_DIR, PUMP_PID_FILE
-
     info("Starting Event Pump...")
     pump_out = LOG_DIR / "pump.log"
     pump_err = LOG_DIR / "pump.err.log"
@@ -166,21 +182,21 @@ def ensure_lm_studio(llm_url: str, model: str) -> bool:
         return False
 
     try:
-        ps = subprocess.run([lms, "ps"], capture_output=True, text=True, check=False)
+        ps = subprocess.run([lms, "ps"], capture_output=True, text=True, check=False)  # noqa: S603
         if model.lower() in ps.stdout.lower():
             info(f"Model already loaded: {model}")
         else:
             info(f"Loading model: {model}")
-            subprocess.run([lms, "load", model], check=True)
-    except Exception as e:
+            subprocess.run([lms, "load", model], check=True)  # noqa: S603
+    except (subprocess.SubprocessError, OSError) as e:
         warn(f"Failed to ensure model load via lms: {e}")
 
     try:
-        subprocess.run([lms, "server", "start"], check=False)
-    except Exception as e:
+        subprocess.run([lms, "server", "start"], check=False)  # noqa: S603
+    except (subprocess.SubprocessError, OSError) as e:
         warn(f"Failed to start LM Studio server: {e}")
 
-    print("   Waiting for LLM server to respond...")
+    sys.stdout.write("   Waiting for LLM server to respond...\n")
     if wait_http(f"{llm_url}/v1/models", attempts=60):
         ok("LM Studio server is up")
         return True
@@ -190,9 +206,9 @@ def ensure_lm_studio(llm_url: str, model: str) -> bool:
 
 def main() -> int:
     os.chdir(REPO_ROOT)
-    print("===============================")
-    print(" Back2Task Starting up...")
-    print("===============================")
+    sys.stdout.write("===============================\n")
+    sys.stdout.write(" Back2Task Starting up...\n")
+    sys.stdout.write("===============================\n")
 
     load_env_local(REPO_ROOT)
     require_env(["LLM_URL", "LLM_MODEL"])
@@ -209,21 +225,25 @@ def main() -> int:
     llm_model = os.environ["LLM_MODEL"]
     llm_ok = ensure_lm_studio(llm_url, llm_model)
 
-    print()
-    print("===============================")
-    print(" Back2Task is now running!")
-    print("===============================")
-    print()
-    print(f"  - API Server: http://127.0.0.1:5577  (PID: {api_pid} )")
-    print(f"  - Event Pump: running                (PID: {pump_pid} )")
-    print(
-        "  - LLM Server: {}".format(
+    sys.stdout.write("\n")
+    sys.stdout.write("===============================\n")
+    sys.stdout.write(" Back2Task is now running!\n")
+    sys.stdout.write("===============================\n")
+    sys.stdout.write("\n")
+    sys.stdout.write(
+        f"  - API Server: http://127.0.0.1:5577  (PID: {api_pid} )\n"
+    )
+    sys.stdout.write(
+        f"  - Event Pump: running                (PID: {pump_pid} )\n"
+    )
+    sys.stdout.write(
+        "  - LLM Server: {}\n".format(
             f"Available ({llm_url} )" if llm_ok else "Unreachable (AI disabled)"
         )
     )
-    print()
-    print("Logs: ./log/api.log, ./log/pump.log")
-    print("Stop: python scripts/stop.py or python3 scripts/stop.py")
+    sys.stdout.write("\n")
+    sys.stdout.write("Logs: ./log/api.log, ./log/pump.log\n")
+    sys.stdout.write("Stop: python scripts/stop.py or python3 scripts/stop.py\n")
 
     return 0
 
@@ -236,4 +256,4 @@ if __name__ == "__main__":
             f"Command failed with exit code {e.returncode}: "
             f"{(' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd)}"
         )
-        raise SystemExit(e.returncode or 1)
+        raise SystemExit(e.returncode or 1) from e
