@@ -1,13 +1,24 @@
+import sys
 import time
+from typing import Any, cast
 
 import psutil
-import pywintypes
-import win32gui
-import win32process
+
+if sys.platform == "win32":
+    import pywintypes  # pyright: ignore[reportMissingImports]
+    import win32gui  # pyright: ignore[reportMissingImports]
+    import win32process  # pyright: ignore[reportMissingImports]
+else:  # pragma: no cover
+    pywintypes = cast("Any", None)
+    win32gui = cast("Any", None)
+    win32process = cast("Any", None)
 
 
 def get_active_app() -> dict[str, str | None]:
-    """Windows環境での前面ウィンドウ取得."""
+    """Return the foreground application on Windows."""
+    if sys.platform != "win32":
+        return {"active_app": None, "title": None}
+
     hwnd = win32gui.GetForegroundWindow()
     if not hwnd:
         return {"active_app": None, "title": None}
@@ -23,8 +34,7 @@ def get_active_app() -> dict[str, str | None]:
         process_name = process.name()
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return {"active_app": None, "title": None}
-    else:
-        return {"active_app": process_name, "title": title}
+    return {"active_app": process_name, "title": title}
 
 
 if __name__ == "__main__":  # pragma: no cover

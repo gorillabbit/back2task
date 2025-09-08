@@ -55,7 +55,8 @@ def check_api_availability() -> bool:
     """APIの可用性をチェック."""
     # ステータスエンドポイントで確認
     response = requests.get("http://localhost:5577/status", timeout=3)
-    return response.status_code == HTTP_OK
+    status_code = int(getattr(response, "status_code", 0))
+    return status_code == HTTP_OK
 
 
 def main() -> None:

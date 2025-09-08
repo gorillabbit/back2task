@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
-from collections.abc import Iterable
-from pathlib import Path
+import sys
+from typing import TYPE_CHECKING
 
 import psutil
 from utils import (
@@ -18,6 +19,10 @@ from utils import (
     warn,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
 API_PORT = 5577
 
 # --- local helpers (stop-only) ---
@@ -27,7 +32,7 @@ def _terminate_proc(proc: psutil.Process, name: str) -> bool:
     try:
         if not proc.is_running():
             return False
-    except Exception:
+    except (psutil.Error, OSError):
         return False
     try:
         info(f"Stopping {name} (PID {proc.pid})...")
@@ -39,9 +44,10 @@ def _terminate_proc(proc: psutil.Process, name: str) -> bool:
             proc.kill()
             proc.wait(timeout=3)
         ok(f"Stopped {name} (PID {proc.pid})")
-        return True
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return False
+    else:
+        return True
 
 
 def stop_by_pidfile(path: Path, name: str) -> bool:
@@ -50,12 +56,10 @@ def stop_by_pidfile(path: Path, name: str) -> bool:
     try:
         pid_txt = path.read_text(encoding="ascii").strip()
         pid = int(pid_txt)
-    except Exception:
+    except (OSError, ValueError):
         warn(f"Invalid PID in {path}: {path.read_text(errors='ignore')!r}")
-        try:
+        with contextlib.suppress(OSError):
             path.unlink(missing_ok=True)
-        except Exception:
-            pass
         return False
     try:
         proc = psutil.Process(pid)
@@ -64,15 +68,13 @@ def stop_by_pidfile(path: Path, name: str) -> bool:
         path.unlink(missing_ok=True)
         return False
     stopped = _terminate_proc(proc, name)
-    try:
+    with contextlib.suppress(OSError):
         path.unlink(missing_ok=True)
-    except Exception:
-        pass
     return stopped
 
 
 def iter_procs_on_port(port: int) -> Iterable[psutil.Process]:
-    seen = set()
+    seen: set[int] = set()
     try:
         for conn in psutil.net_connections(kind="inet"):
             if conn.laddr and getattr(conn.laddr, "port", None) == port:
@@ -83,8 +85,8 @@ def iter_procs_on_port(port: int) -> Iterable[psutil.Process]:
                         yield psutil.Process(pid)
                     except psutil.NoSuchProcess:
                         continue
-    except Exception:
-        return []
+    except psutil.Error:
+        return
 
 
 def stop_by_port(port: int) -> int:
@@ -100,16 +102,16 @@ def tail_log(path: Path, lines: int = 5) -> None:
         return
     try:
         content = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-        print(f"--- Tail {path.name} ---")
+        sys.stdout.write(f"--- Tail {path.name} ---\n")
         for line in content[-lines:]:
-            print("   " + line)
-    except Exception:
-        pass
+            sys.stdout.write("   " + line + "\n")
+    except OSError as exc:
+        warn(f"Could not read log {path}: {exc}")
 
 
 def main() -> int:
     os.chdir(REPO_ROOT)
-    print("============== Back2Task 停止中 ================")
+    sys.stdout.write("============== Back2Task 停止中 ================\n")
 
     stopped = 0
     stopped += 1 if stop_by_pidfile(API_PID_FILE, "API server") else 0
@@ -125,9 +127,9 @@ def main() -> int:
         ok(f"\nBack2Task stopped ({stopped} process(es) terminated)")
     else:
         warn("No Back2Task processes found")
-    print("\nTo start again:")
-    print("  - Windows:  python scripts\\start.py")
-    print("  - macOS/Linux: python3 scripts/start.py")
+    sys.stdout.write("\nTo start again:\n")
+    sys.stdout.write("  - Windows:  python scripts\\start.py\n")
+    sys.stdout.write("  - macOS/Linux: python3 scripts/start.py\n")
     return 0
 
 
