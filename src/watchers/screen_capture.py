@@ -3,8 +3,8 @@ import time
 from io import BytesIO
 from typing import cast
 
-import mss
-from PIL import Image
+import mss  # pyright: ignore[reportMissingImports]
+from PIL import Image  # pyright: ignore[reportMissingImports]
 
 from src.watchers.logger import logger
 

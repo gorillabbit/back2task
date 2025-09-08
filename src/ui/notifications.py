@@ -1,10 +1,21 @@
 import platform
+import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from win10toast import ToastNotifier  # pyright: ignore[reportMissingTypeStubs]
+if sys.platform == "win32":
+    from win10toast import (
+        ToastNotifier,  # pyright: ignore[reportMissingImports, reportMissingTypeStubs]
+    )
+else:
+    class _ToastNotifier:  # pragma: no cover
+        def show_toast(self, title: str, msg: str, duration: int = 5) -> None:
+            """Fallback notifier used on non-Windows platforms."""
+            raise NotImplementedError(title, msg, duration)
+
+    ToastNotifier = _ToastNotifier
 
 
 class NotificationLevel(Enum):
@@ -57,7 +68,7 @@ class NotificationService:
         success = False
         if self.platform == "Windows":
             notifier = ToastNotifier()
-            notifier.show_toast(title, message, duration=5)  # pyright: ignore[reportUnknownMemberType]
+            notifier.show_toast(title, message, duration=5)
         self._history.append(
             {
                 "title": title,

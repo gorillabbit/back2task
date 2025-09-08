@@ -77,9 +77,6 @@ disable_error_code = ["import-untyped"]
 
 [tool.pyright]
 pythonVersion = "3.11"
-typeCheckingMode = "basic"
-reportMissingImports = false
-reportMissingModuleSource = false
 
 [dependency-groups]
 dev = [

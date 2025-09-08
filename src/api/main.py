@@ -2,9 +2,9 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, field_validator
+from fastapi import FastAPI, HTTPException  # pyright: ignore[reportMissingImports]
+from fastapi.responses import HTMLResponse  # pyright: ignore[reportMissingImports]
+from pydantic import BaseModel, field_validator  # pyright: ignore[reportMissingImports]
 
 from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
 from src.model.models import EventModel, IngestEventModel
