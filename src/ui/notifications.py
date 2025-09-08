@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 
 if sys.platform == "win32":
-    from win10toast import ToastNotifier  # type: ignore[import-untyped]
+    from win10toast import ToastNotifier  # type: ignore[import-untyped, unused-ignore]
 
 
 class NotificationLevel(Enum):
@@ -59,7 +59,7 @@ class NotificationService:
         success = False
         if self.platform == "Windows":
             notifier = ToastNotifier()
-            notifier.show_toast(title, message, duration=5)
+            notifier.show_toast(title, message, duration=5)  # pyright: ignore[reportUnknownMemberType]
         self._history.append(
             {
                 "title": title,

@@ -19,10 +19,6 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
 
 
-def check_model(llm_url: str) -> bool:
-    return http_ok(f"{llm_url}/v1/models")
-
-
 def background_popen(
     cmd: list[str], stdout_path: Path, stderr_path: Path, env: dict[str, str]
 ) -> subprocess.Popen[bytes]:
@@ -83,9 +79,9 @@ def ensure_lm_studio(llm_url: str, model: str) -> None:
     if model not in ps.stdout:
         run_command([lms, "load", model])
 
-    if not check_model(llm_url):
+    if not http_ok(f"{llm_url}/v1/models"):
         run_command([lms, "server", "start"])
-        check_model(llm_url)
+        http_ok(f"{llm_url}/v1/models")
     logger.info(f"LLM server: {llm_url} が起動しました")
 
 
