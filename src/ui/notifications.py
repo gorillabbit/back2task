@@ -6,16 +6,7 @@ from enum import Enum
 from typing import Any
 
 if sys.platform == "win32":
-    from win10toast import (
-        ToastNotifier,  # pyright: ignore[reportMissingImports, reportMissingTypeStubs]
-    )
-else:
-    class _ToastNotifier:  # pragma: no cover
-        def show_toast(self, title: str, msg: str, duration: int = 5) -> None:
-            """Fallback notifier used on non-Windows platforms."""
-            raise NotImplementedError(title, msg, duration)
-
-    ToastNotifier = _ToastNotifier
+    from win10toast import ToastNotifier  # type: ignore[import-untyped]
 
 
 class NotificationLevel(Enum):
