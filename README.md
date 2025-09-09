@@ -83,40 +83,13 @@ LM Studio の Local Server は OpenAI 互換 API を提供します。本プロ�
 LM Studio の公式 CLI `lms` が使える場合は、次のワンライナーで Gemma をロードしてローカルサーバーを開始できます。
 
 ```bash
-# モデルをロードしてサーバー起動（サーバーは固定で 127.0.0.1:1234）
-lms load google/gemma-3-4b
-lms server start
-
 # Back2Task 起動（.env.local を利用）
 # 統一ランチャー (Python) を直接実行します
 # Windows (CMD/PowerShell)
-python scripts\start.py
+python scripts\boot\start.py
 # macOS/Linux
-python3 scripts/start.py
-
-# 停止
-lms server stop
+python3 scripts/boot/start.py
 ````
-
-従来のシェル/バッチスクリプトも利用可能です（必要な場合のみ）。
-
-```bash
-# Windows (cmd)
-scripts\lms_start_gemma.bat
-
-# macOS/Linux (bash)
-bash scripts/lms_start_gemma.sh
-
-# 停止（共通）
-scripts\lms_stop_gemma.bat    # Windows
-bash scripts/lms_stop_gemma.sh # macOS/Linux
-
-# Back2Task 自体の停止（Python ランチャーで停止）
-# Windows
-python scripts\stop.py
-# macOS/Linux
-python3 scripts/stop.py
-```
 
 補足:
 
@@ -138,10 +111,14 @@ curl http://localhost:5577/status | python3 -m json.tool
 ```
 
 # ログ確認（本ランチャーは ./log/ に出力）
+
 # macOS/Linux
-tail -f log/*.log
+
+tail -f log/\*.log
+
 # Windows (PowerShell)
-Get-Content -Wait -Tail 100 log/*.log
+
+Get-Content -Wait -Tail 100 log/\*.log
 
 ````
 

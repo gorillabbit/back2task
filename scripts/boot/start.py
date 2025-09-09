@@ -3,7 +3,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from utils import (
+from scripts.boot.utils import (
     API_PID_FILE,
     LOG_DIR,
     PUMP_PID_FILE,

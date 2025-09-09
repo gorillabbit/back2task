@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 
 import psutil
-from utils import (
+
+from scripts.boot.utils import (
     API_PID_FILE,
     PUMP_PID_FILE,
     REPO_ROOT,

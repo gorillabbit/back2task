@@ -60,6 +60,7 @@ ignore = [
     "D415", # ピリオド必須
     "RUF003", # 全角記号不可
     "RUF002", # 全角カッコ不可
+    "ERA001", # コメントアウトコード禁止。誤検知が多い
 ]
 
 [tool.ruff.lint.per-file-ignores]

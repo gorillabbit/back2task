@@ -8,7 +8,7 @@ from pydantic import BaseModel, field_validator  # pyright: ignore[reportMissing
 
 from src.api.services.llm import LLMService, NudgingPolicy, create_llm_service
 from src.model.models import EventModel, IngestEventModel
-from src.ui.notifications import NotificationService
+from src.ui.notifications import NotificationService, notify_with_details
 
 # FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(
@@ -127,9 +127,21 @@ async def get_current_status() -> dict[str, Any]:
 
 
 @app.post("/notify")
-async def call_notify(_: dict[str, Any]) -> bool:
-    """通知を起動する"""
-    return NotificationService().notify("通知", "タスクに戻ってください")
+async def call_notify(data: dict[str, Any]) -> bool:
+    """詳細情報付きの通知を起動する"""
+    # データから必要な情報を取得
+    policy = data.get("policy")
+
+    if not policy or not STATE["last_event"]:
+        # フォールバック: 基本的な通知
+        return NotificationService().notify("通知", "タスクに戻ってください")
+
+    # 詳細通知を送信
+    return notify_with_details(
+        event=STATE["last_event"],
+        policy=policy,
+        focus_target=STATE["focus_target"],
+    )
 
 
 # --- モニタリング用エンドポイント ---
